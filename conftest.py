@@ -4,6 +4,7 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from pages.login_page import LoginPage
 from locators.login_locators import *
 from dotenv import load_dotenv
@@ -73,8 +74,12 @@ def login_url():
 
 
 @pytest.fixture
-def logged_in_driver(driver, login_url):
+def logged_in_driver(driver, wait, login_url):
     driver.get(login_url)
+
+    wait.until(EC.presence_of_element_located(EMAIL_INPUT))
+    wait.until(EC.presence_of_element_located(PASSWORD_INPUT))
+    wait.until(EC.element_to_be_clickable(LOGIN_BUTTON))
 
     login_page = LoginPage(driver)
     login_page.enter_email(ACCOUNT_EMAIL)
