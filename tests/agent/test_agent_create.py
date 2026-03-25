@@ -2,6 +2,7 @@ import pytest
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from locators.menu_locators import *
+from locators.agent_locators import *
 
 
 def test_navigate_to_agent_create(navigate_to_agent_explore, wait):
@@ -9,7 +10,7 @@ def test_navigate_to_agent_create(navigate_to_agent_explore, wait):
     driver = navigate_to_agent_explore
 
     # Act
-    wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "a[href='/ai-helpy-chat/agents/builder']"))).click()
+    wait.until(EC.element_to_be_clickable(AGENT_CREATE_BUTTON)).click()
     create_title = wait.until(EC.presence_of_element_located((By.XPATH, "//p[text()='새 에이전트 만들기']")))
 
     # Assert
