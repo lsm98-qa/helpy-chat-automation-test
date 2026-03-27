@@ -4,7 +4,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from pages.chat_actions import click_new_chat
 
-def test_image_generation(logged_in_driver, wait):
+def test_image_create(logged_in_driver, wait):
     #==========
     # Arrange
     #==========
@@ -13,7 +13,7 @@ def test_image_generation(logged_in_driver, wait):
     
     # 새 대화 클릭
     click_new_chat(wait)
-    
+
     #==========
     # Act
     #==========
@@ -50,3 +50,20 @@ def test_image_generation(logged_in_driver, wait):
     chat_input.click()
     chat_input.send_keys("강아지 이미지 생성해줘")
     chat_input.send_keys(Keys.ENTER)
+
+    #==========
+    # Assert
+    #==========
+    # 채팅 본문에 로드 완료된 이미지가 보일 때까지 대기
+    wait_image = WebDriverWait(driver, 60)
+    assert wait_image.until(
+        lambda d: len(
+            d.execute_script(
+                """
+                return Array.from(document.querySelectorAll('main img'))
+                  .filter(img => img.src && img.complete && img.naturalWidth >= 200 && img.offsetParent !== null);
+                """
+            )
+        )
+        > 0
+    )
