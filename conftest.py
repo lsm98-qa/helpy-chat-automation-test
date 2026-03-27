@@ -1,4 +1,4 @@
-import pytest
+﻿import pytest
 import os
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -6,7 +6,7 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from pages.login_page import LoginPage
-from locators.login_locators import *
+from locators.auth_locators import EMAIL_INPUT, LOGIN_BUTTON, PASSWORD_INPUT
 from dotenv import load_dotenv
 
 #===================
