@@ -2,7 +2,7 @@ from selenium.webdriver.common.by import By
 from pages.chat_actions import click_new_chat, send_chat_message
 
 
-def test_login(logged_in_driver, wait):
+def test_chat_refresh(logged_in_driver, wait):
     #==========
     # Arrange
     #==========
