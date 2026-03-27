@@ -45,4 +45,4 @@ def test_chat_persistence_after_relogin(logged_in_driver, wait):
     wait.until(EC.presence_of_element_located((By.NAME, "input")))
     wait.until(lambda d: len(d.find_elements(*AI_MESSAGE_TEXTS)) > 0)
     after_relogin = driver.find_elements(*AI_MESSAGE_TEXTS)[-1].text
-    assert after_relogin == before_logout
+    assert after_relogin == before_logout, "로그아웃 전과 채팅이 동일하지 않습니다."

@@ -29,4 +29,4 @@ def test_corrects_incorrect_information(logged_in_driver, wait):
     wait_reply.until(lambda d: len(d.find_elements(*AI_MESSAGE_TEXTS)) > 0)
     
     reply_texts = [el.text.strip() for el in driver.find_elements(*AI_MESSAGE_TEXTS)]
-    assert any("서울" in t for t in reply_texts)
+    assert any("서울" in t for t in reply_texts), "잘못된 정보에 대한 정정 안내가 없습니다."

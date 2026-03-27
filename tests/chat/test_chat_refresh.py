@@ -41,4 +41,4 @@ def test_chat_message_persists_after_refresh(logged_in_driver, wait):
     )
 
     after_refresh = driver.find_elements(*AI_MESSAGE_TEXTS)[-1].text
-    assert before_refresh == after_refresh
+    assert before_refresh == after_refresh, "새로고침 전과 채팅이 동일하지 않습니다."
