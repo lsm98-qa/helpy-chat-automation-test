@@ -1,10 +1,10 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
-from chat_actions import click_new_chat, send_chat_message
+from pages.chat_actions import click_new_chat, send_chat_message
 
 
-def test_login(logged_in_driver, wait):
+def test_chat_create_and_receive_response(logged_in_driver, wait):
     #==========
     # Arrange
     #==========

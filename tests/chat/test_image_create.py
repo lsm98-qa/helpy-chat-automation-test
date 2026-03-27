@@ -4,7 +4,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from pages.chat_actions import click_new_chat
 
-def test_image_create(logged_in_driver, wait):
+def test_chat_generates_and_displays_image(logged_in_driver, wait):
     #==========
     # Arrange
     #==========
