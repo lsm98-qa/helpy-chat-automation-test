@@ -41,12 +41,7 @@ def test_image_create(logged_in_driver, wait):
     )
     image_menu.click()
 
-    # 프롬프트 입력 및 전송
-    chat_input = wait.until(
-        EC.presence_of_element_located(
-            (By.NAME, "input")
-        )
-    )
+    # 생성할 이미지 내용 전송
     chat_input.click()
     chat_input.send_keys("강아지 이미지 생성해줘")
     chat_input.send_keys(Keys.ENTER)
