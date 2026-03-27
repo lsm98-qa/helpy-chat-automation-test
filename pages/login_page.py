@@ -1,4 +1,5 @@
-from locators.login_locators import *
+﻿from locators.auth_locators import EMAIL_INPUT, LOGIN_BUTTON, PASSWORD_INPUT
+
 
 class LoginPage:
     def __init__(self, driver):
