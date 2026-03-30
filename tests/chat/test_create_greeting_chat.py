@@ -4,7 +4,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from pages.chat_actions import click_new_chat, send_chat_message
 
 
-def test_chat_create_and_receive_response(logged_in_driver, wait):
+def test_new_chat_receives_expected_greeting_reply(logged_in_driver, wait):
     #==========
     # Arrange
     #==========
@@ -29,4 +29,4 @@ def test_chat_create_and_receive_response(logged_in_driver, wait):
             len(t) > 4 and t != first_chat and ("안녕" in t or "반갑" in t or "도와" in t)
             for t in (p.text.strip() for p in d.find_element(By.TAG_NAME, "body").find_elements(By.TAG_NAME, "p"))
         )
-    )
+    ), "응답 내용이 올바르지 않습니다."

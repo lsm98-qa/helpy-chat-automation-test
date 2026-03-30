@@ -61,4 +61,4 @@ def test_chat_generates_and_displays_image(logged_in_driver, wait):
             )
         )
         > 0
-    )
+    ), "이미지 파일이 생성되지 않았습니다."
