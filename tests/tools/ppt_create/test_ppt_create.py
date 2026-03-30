@@ -50,16 +50,17 @@ def test_ppt_create(logged_in_driver):
     # =========================
     # Act
     # =========================
-
+    
     # 생성 버튼 클릭
-    click(driver, By.XPATH, "//button[contains(text(),'다시 생성')]")
+    click(driver, By.CSS_SELECTOR, "button[type='submit']")
 
-    modal = wait.until(
-        EC.presence_of_element_located((By.XPATH, "//div[@role='presentation']"))
-    )
 
-    # 모달 안 다시 생성 버튼 클릭
-    modal.find_element(By.XPATH, ".//button[contains(text(),'다시 생성')]").click()
+    # modal = wait.until(
+    #     EC.presence_of_element_located((By.XPATH, "//div[@role='presentation']"))
+    # )
+
+    # # 모달 안 다시 생성 버튼 클릭
+    # modal.find_element(By.XPATH, ".//button[contains(text(),'다시 생성')]").click()
 
     print("PPT 생성 시작")
 
