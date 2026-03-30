@@ -1,7 +1,6 @@
-﻿from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
+﻿from selenium.webdriver.support import expected_conditions as EC
 
-from locators.agent_locators import AGENT_CREATE_BUTTON
+from locators.agent_locators import AGENT_CREATE_BUTTON, AGENT_CREATE_PAGE_BACK_BUTTON
 from locators.menu_locators import MENU_AGENT_EXPLORE
 
 
@@ -26,7 +25,7 @@ def test_navigate_to_agent_create(navigate_to_agent_explore, wait):
     wait.until(EC.element_to_be_clickable(AGENT_CREATE_BUTTON)).click()
     wait.until(EC.url_contains("/ai-helpy-chat/agents"))
     wait.until(EC.url_contains("/builder"))
-    back_button = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "button[aria-label]")))
+    back_button = wait.until(EC.element_to_be_clickable(AGENT_CREATE_PAGE_BACK_BUTTON))
 
     # Assert
     assert back_button.is_displayed()
@@ -38,7 +37,7 @@ def test_navigate_back_to_agent_explore_from_agent_create(navigate_to_agent_expl
     # Arrange
     driver = navigate_to_agent_explore
     wait.until(EC.element_to_be_clickable(AGENT_CREATE_BUTTON)).click()
-    back_button = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "button[aria-label]")))
+    back_button = wait.until(EC.element_to_be_clickable(AGENT_CREATE_PAGE_BACK_BUTTON))
 
     # Act
     back_button.click()
