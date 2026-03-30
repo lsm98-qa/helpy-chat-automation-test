@@ -89,4 +89,3 @@ def test_ppt_create(logged_in_driver, wait):
     assert success, "PPT 생성이 완료되지 않았습니다."
 
 
-
