@@ -4,7 +4,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from pages.chat_actions import click_new_chat, send_chat_message
 
 
-def test_chat_create_and_receive_response(logged_in_driver, wait):
+def test_new_chat_receives_expected_greeting_reply(logged_in_driver, wait):
     #==========
     # Arrange
     #==========
