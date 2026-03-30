@@ -9,6 +9,7 @@ from tests.tools.spec_detail.assert_messages import (
     SUBJECT_NOT_SAVED,
     UNIT_NOT_SAVED,
 )
+from tests.tools.spec_detail.input_values import SUBJECT_INPUT, UNIT_INPUT
 
 
 def find(driver, by, value):
@@ -74,7 +75,7 @@ def test_spec_create(logged_in_driver):
         driver,
         By.XPATH,
         "//input[@placeholder='과목을 선택해주세요. (직접 입력 가능)']",
-        "국어"
+        SUBJECT_INPUT
     )
     click(driver, By.XPATH, "//li[normalize-space()='국어']")
 
@@ -83,7 +84,7 @@ def test_spec_create(logged_in_driver):
         driver,
         By.XPATH,
         "//input[@placeholder='수업 단원을 입력해주세요.']",
-        "1단원 : 문학작품감상"
+        UNIT_INPUT
     )
 
     # =========================
