@@ -2,6 +2,13 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from tests.tools.spec_detail.assert_messages import (
+    GRADE_NOT_SAVED,
+    NAME_INPUT_AREA_NOT_DISPLAYED,
+    SCHOOL_LEVEL_NOT_SAVED,
+    SUBJECT_NOT_SAVED,
+    UNIT_NOT_SAVED,
+)
 
 
 def find(driver, by, value):
@@ -98,10 +105,10 @@ def test_spec_create(logged_in_driver):
     # =========================
 
     # 1. 학생 이름 입력 화면 진입 여부 확인
-    assert name_input_area.is_displayed(), "학생 이름 입력 화면이 나타나지 않았습니다."
+    assert name_input_area.is_displayed(), NAME_INPUT_AREA_NOT_DISPLAYED
 
     # 2. 이전 단계 입력값 저장/노출 여부 확인
-    assert find(driver, By.XPATH, "//h6[normalize-space()='초등학교']").is_displayed(), "학교급이 저장되지 않았습니다."
-    assert find(driver, By.XPATH, "//h6[normalize-space()='6학년']").is_displayed(), "학년이 저장되지 않았습니다."
-    assert find(driver, By.XPATH, "//h6[normalize-space()='국어']").is_displayed(), "과목이 저장되지 않았습니다."
-    assert find(driver, By.XPATH, "//h6[normalize-space()='1단원 : 문학작품감상']").is_displayed(), "단원이 저장되지 않았습니다."
+    assert find(driver, By.XPATH, "//h6[normalize-space()='초등학교']").is_displayed(), SCHOOL_LEVEL_NOT_SAVED
+    assert find(driver, By.XPATH, "//h6[normalize-space()='6학년']").is_displayed(), GRADE_NOT_SAVED
+    assert find(driver, By.XPATH, "//h6[normalize-space()='국어']").is_displayed(), SUBJECT_NOT_SAVED
+    assert find(driver, By.XPATH, "//h6[normalize-space()='1단원 : 문학작품감상']").is_displayed(), UNIT_NOT_SAVED
