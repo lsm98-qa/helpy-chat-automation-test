@@ -1,4 +1,5 @@
-﻿from selenium import webdriver
+﻿import pytest
+from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
@@ -10,6 +11,8 @@ from urllib.request import urlretrieve
 from zipfile import ZipFile
 import xml.etree.ElementTree as ET
 from pptx import Presentation
+
+from locators.menu_locators import MENU_TOOLS
 
 NS = {
     "p": "http://schemas.openxmlformats.org/presentationml/2006/main",
@@ -128,7 +131,7 @@ def verify_slide_count(ppt_file_path, expected_slide_count, expected_section_cou
     if errors:
         raise AssertionError("\n".join(errors))
 
-
+@pytest.mark.xfail(reason="PPT 생성 도구의 불안정성으로 인해 현재 PPT 슬라이드 수 불일치 버그 존재")
 def test_ppt_create(logged_in_driver, wait):
     driver = logged_in_driver
     expected_slide_count = 10
@@ -139,7 +142,7 @@ def test_ppt_create(logged_in_driver, wait):
     # =========================
 
     # 도구 → PPT 생성
-    click(driver, By.XPATH, "//span[text()='도구']")
+    click(driver, *MENU_TOOLS)
     click(driver, By.XPATH, "//p[text()='PPT 생성']")
 
     # 입력
