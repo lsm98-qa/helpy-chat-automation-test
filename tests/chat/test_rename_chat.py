@@ -1,13 +1,14 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
-from pages.chat_actions import click_top_chat_item_option_button, get_top_chat_item
+from pages.chat_actions import click_top_chat_item_option_button, get_top_chat_item, check_chat_exists_or_pass
 
 def rename_chat(logged_in_driver, wait):
     #==========
     # Arrange
     #==========
     logged_in_driver
+    check_chat_exists_or_pass(wait)
     
     #==========
     # Act
