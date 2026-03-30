@@ -2,7 +2,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.action_chains import ActionChains
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import NoSuchElementException
 
 def click_new_chat(wait):
     """새 대화 버튼 클릭"""
@@ -49,7 +49,7 @@ def click_top_chat_item_option_button(wait):
 def get_top_chat_item_or_none(wait):
     try:
         return get_top_chat_item(wait)
-    except TimeoutException:
+    except NoSuchElementException:
         return None
 
         
