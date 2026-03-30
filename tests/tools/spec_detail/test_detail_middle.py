@@ -83,13 +83,13 @@ def test_spec_create(logged_in_driver):
     # Act (실행)
     # =========================
 
-    # 다음으로 버튼 클릭
-    click(driver, By.XPATH, "//button[contains(text(),'다음으로')]")
+    # 다음으로 버튼 클릭 (type='submit' 포함하여 더 정확하게 선택)
+    click(driver, By.XPATH, "//button[@type='submit' and contains(., '다음으로')]")
 
     # 결과 화면(학생 이름 입력 단계) 로딩 대기
     name_input_area = find(driver, By.XPATH, "//p[text()='이름을 입력해주세요.']")
 
-    # 스크린샷 저장
+    # 스크린샷 저장 (디버깅용)
     driver.save_screenshot("result.png")
     print("스크린샷 저장 완료 (result.png)")
 
@@ -97,7 +97,11 @@ def test_spec_create(logged_in_driver):
     # Assert (검증)
     # =========================
 
-    # 이름 입력 영역이 실제로 화면에 보이는지 확인
+    # 1. 학생 이름 입력 화면 진입 여부 확인
     assert name_input_area.is_displayed(), "학생 이름 입력 화면이 나타나지 않았습니다."
 
-    # URL 또는 특정 화면 요소로 다음 단계 진입 여부 확인하고 싶으면 추가 가능
+    # 2. 이전 단계 입력값 저장/노출 여부 확인
+    assert find(driver, By.XPATH, "//h6[normalize-space()='중학교']").is_displayed(), "학교급이 저장되지 않았습니다."
+    assert find(driver, By.XPATH, "//h6[normalize-space()='3학년']").is_displayed(), "학년이 저장되지 않았습니다."
+    assert find(driver, By.XPATH, "//h6[normalize-space()='국어']").is_displayed(), "과목이 저장되지 않았습니다."
+    assert find(driver, By.XPATH, "//h6[normalize-space()='1단원 : 문학작품감상']").is_displayed(), "단원이 저장되지 않았습니다."
