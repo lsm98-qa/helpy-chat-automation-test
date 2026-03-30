@@ -4,7 +4,7 @@ from pages.chat_actions import click_new_chat, send_chat_message
 
 
 
-def test_incorrect_info(logged_in_driver, wait):
+def test_corrects_incorrect_information(logged_in_driver, wait):
     #==========
     # Arrange
     #==========

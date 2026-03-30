@@ -8,7 +8,7 @@ from pages.account_menu import AccountMenu
 from pages.chat_actions import click_new_chat, send_chat_message
 
 
-def test_chat_relogin(logged_in_driver, wait):
+def test_chat_persistence_after_relogin(logged_in_driver, wait):
     #==========
     # Arrange
     #==========
