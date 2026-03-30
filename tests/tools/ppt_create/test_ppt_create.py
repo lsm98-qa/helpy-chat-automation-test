@@ -12,6 +12,8 @@ from zipfile import ZipFile
 import xml.etree.ElementTree as ET
 from pptx import Presentation
 
+from locators.menu_locators import MENU_TOOLS
+
 NS = {
     "p": "http://schemas.openxmlformats.org/presentationml/2006/main",
 }
@@ -140,7 +142,7 @@ def test_ppt_create(logged_in_driver, wait):
     # =========================
 
     # 도구 → PPT 생성
-    click(driver, By.XPATH, "//span[text()='도구']")
+    click(driver, *MENU_TOOLS)
     click(driver, By.XPATH, "//p[text()='PPT 생성']")
 
     # 입력
