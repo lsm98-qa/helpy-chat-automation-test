@@ -33,17 +33,15 @@ def get_top_chat_item(wait):
 def click_top_chat_item_option_button(wait):
     chat_item = get_top_chat_item(wait)
 
-    # 상단 채팅 포인터
-    driver = wait._driver
-    ActionChains(driver).move_to_element(chat_item).perform()
-
-    # 옵션 버튼 클릭
-    option_button = wait.until(
-        lambda d: d.find_element(
-            By.CSS_SELECTOR,
-            "[data-testid='virtuoso-scroller'] a[data-index='0'] svg[data-icon='ellipsis-vertical']",
+    # 옵션 버튼이 클릭 가능할 때 까지 포인터 유지
+    option_button = wait.until(lambda d: (
+    ActionChains(d).move_to_element(chat_item).perform(),
+    d.find_element(
+        By.CSS_SELECTOR,
+        "[data-testid='virtuoso-scroller'] a[data-index='0'] svg[data-icon='ellipsis-vertical']"
         )
-    )
+    )[1])
+
     option_button.click()
 
 def get_top_chat_item_or_none(wait):
