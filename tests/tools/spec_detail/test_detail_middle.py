@@ -101,7 +101,7 @@ def test_spec_create(logged_in_driver):
     assert name_input_area.is_displayed(), "학생 이름 입력 화면이 나타나지 않았습니다."
 
     # 2. 이전 단계 입력값 저장/노출 여부 확인
-    assert find(driver, By.XPATH, "//h6[normalize-space()='초등학교']").is_displayed(), "학교급이 저장되지 않았습니다."
-    assert find(driver, By.XPATH, "//h6[normalize-space()='6학년']").is_displayed(), "학년이 저장되지 않았습니다."
+    assert find(driver, By.XPATH, "//h6[normalize-space()='중학교']").is_displayed(), "학교급이 저장되지 않았습니다."
+    assert find(driver, By.XPATH, "//h6[normalize-space()='3학년']").is_displayed(), "학년이 저장되지 않았습니다."
     assert find(driver, By.XPATH, "//h6[normalize-space()='국어']").is_displayed(), "과목이 저장되지 않았습니다."
     assert find(driver, By.XPATH, "//h6[normalize-space()='1단원 : 문학작품감상']").is_displayed(), "단원이 저장되지 않았습니다."
