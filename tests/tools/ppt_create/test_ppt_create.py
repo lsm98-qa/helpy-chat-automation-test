@@ -24,8 +24,9 @@ def type_text(driver, by, value, text):
     element.send_keys(text)
 
 
-def test_ppt_create(logged_in_driver, wait):
+def test_ppt_create(logged_in_driver):
     driver = logged_in_driver
+    wait = WebDriverWait(driver, 10)
 
     # =========================
     # Arrange
@@ -40,6 +41,11 @@ def test_ppt_create(logged_in_driver, wait):
     type_text(driver, By.NAME, "instructions", "2025년 기준으로 만들어줘")
     type_text(driver, By.NAME, "slides_count", "10")
     type_text(driver, By.NAME, "section_count", "3")
+
+    # 심층조사 모드 체크 해제
+    simple_mode_checkboxes = driver.find_element(By.NAME, "simple_mode")
+    if simple_mode_checkboxes and simple_mode_checkboxes.is_selected():
+        simple_mode_checkboxes.click()
 
     # =========================
     # Act
