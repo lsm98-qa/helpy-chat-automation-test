@@ -26,8 +26,30 @@ def test_can_delete_top_chat_item(logged_in_driver, wait):
 
     # 삭제 확인 팝업의 '삭제' 버튼 클릭
     buttons = wait.until(
-    lambda d: d.find_elements(By.CSS_SELECTOR, "div[role='dialog'] button")
+        lambda d: d.find_elements(By.CSS_SELECTOR, "div[role='dialog'] button")
     )
     delete_button = next(b for b in buttons if b.text.strip() == "삭제")
-    
     delete_button.click()
+
+    #==========
+    # Assert
+    #==========
+    # 삭제 전 채팅 요소가 사라질 때 까지 대기기
+    wait.until(EC.staleness_of(delete_before_top_chat))
+    
+    
+    driver = wait._driver
+
+    # 채팅 기록 확인
+    chat_items = driver.find_elements(
+        By.CSS_SELECTOR,
+        "[data-testid='virtuoso-scroller'] a[data-index]"
+    )
+    
+    # 채팅이 남은 경우 최상단 채팅 요소로 비교 검증
+    if len(chat_items) > 0:
+        delete_after_top_chat = get_top_chat_item(wait)
+        assert delete_after_top_chat != delete_before_top_chat, "채팅 기록이 삭제되지 않았습니다."
+
+    else:
+        assert len(chat_items) == 0, "채팅 기록이 삭제되지 않았습니다."
