@@ -1,32 +1,31 @@
+import pytest
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
 from pages.chat_actions import click_new_chat, send_chat_message
+from tests.chat.constants import GREETING_REPLY_TEST_CASES
 
 
-def test_new_chat_receives_expected_greeting_reply(logged_in_driver, wait):
+@pytest.mark.parametrize(
+    "question, expected_keywords",
+    GREETING_REPLY_TEST_CASES,
+)
+def test_new_chat_receives_expected_greeting_reply(logged_in_driver, wait, question, expected_keywords):
     #==========
     # Arrange
     #==========
-    driver = logged_in_driver
+    _ = logged_in_driver
 
     #==========
     # Act
     #==========
-
-    # 새 대화 생성
     click_new_chat(wait)
-
-    first_chat = "안녕하세요"
-    send_chat_message(wait, first_chat)
+    send_chat_message(wait, question)
 
     #==========
     # Assert
     #==========
-    # 입력 값 제외 안녕/반갑/도와 문구 포함 여부로 응답 검증
     assert wait.until(
         lambda d: any(
-            len(t) > 4 and t != first_chat and ("안녕" in t or "반갑" in t or "도와" in t)
+            len(t) > 4 and t != question and any(keyword in t for keyword in expected_keywords)
             for t in (p.text.strip() for p in d.find_element(By.TAG_NAME, "body").find_elements(By.TAG_NAME, "p"))
         )
-    ), "응답 내용이 올바르지 않습니다."
+    ), f"질문 '{question}'에 대한 응답이 기대 키워드 {expected_keywords}를 포함하지 않습니다."
