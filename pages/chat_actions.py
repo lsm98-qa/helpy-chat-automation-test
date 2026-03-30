@@ -28,7 +28,7 @@ def get_top_chat_item(wait):
 
     # 채팅 목록 중 최상단 채팅
     return sidebar.find_element(
-        By.CSS_SELECTOR, "a.MuiListItemButton-root[data-index='0']"
+        By.CSS_SELECTOR, "[data-testid='virtuoso-scroller'] a[data-index='0']"
     )
     
 def click_top_chat_item_option_button(wait):
@@ -42,7 +42,7 @@ def click_top_chat_item_option_button(wait):
     option_button = wait.until(
         lambda d: d.find_element(
             By.CSS_SELECTOR,
-            "aside a[data-index='0'] button.MuiIconButton-root",
+            "[data-testid='virtuoso-scroller'] a[data-index='0'] svg[data-icon='ellipsis-vertical']",
         )
     )
     option_button.click()
