@@ -1,14 +1,18 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
-from pages.chat_actions import click_top_chat_item_option_button, get_top_chat_item, check_chat_exists_or_pass
+from pages.chat_actions import click_top_chat_item_option_button, get_top_chat_item, click_new_chat
 
+chat_item = get_top_chat_item(wait)
 def test_rename_chat(logged_in_driver, wait):
     #==========
     # Arrange
     #==========
     logged_in_driver
-    check_chat_exists_or_pass(wait)
+
+    
+    if len(chat_item) == 0:
+        click_new_chat
     
     #==========
     # Act
@@ -41,7 +45,15 @@ def test_rename_chat(logged_in_driver, wait):
     # Assert
     #==========
     # 최상단 채팅 요소 가져오기
-    chat_item = get_top_chat_item(wait)
     
     wait.until(EC.invisibility_of_element(input_box)) # 이름 입력창 사라질 때 까지 대기
     assert new_name == chat_item.text.strip(), "입력한 이름과 변경된 이름이 일치하지 않습니다."
+
+
+def test_no_chat(logged_in_driver, wait):
+    #==========
+    # Arrange
+    #==========
+    logged_in_driver
+
+

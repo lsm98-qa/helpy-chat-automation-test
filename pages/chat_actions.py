@@ -2,8 +2,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.action_chains import ActionChains
-from selenium.common.exceptions import NoSuchElementException
-import pytest
+from selenium.common.exceptions import TimeoutException
 
 def click_new_chat(wait):
     """새 대화 버튼 클릭"""
@@ -47,8 +46,10 @@ def click_top_chat_item_option_button(wait):
     )
     option_button.click()
 
-def check_chat_exists_or_pass(wait):
+def get_top_chat_item_or_none(wait):
     try:
         return get_top_chat_item(wait)
-    except NoSuchElementException:
-        pytest.skip("채팅 기록이 존재하지 않습니다.")
+    except TimeoutException:
+        return None
+
+        
