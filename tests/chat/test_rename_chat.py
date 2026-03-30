@@ -5,7 +5,7 @@ from pages.chat_actions import click_top_chat_item_option_button, get_top_chat_i
 import pytest
 from selenium.webdriver.common.action_chains import ActionChains
 
-def test_rename_chat(logged_in_driver, wait):
+def test_can_rename_top_chat_item(logged_in_driver, wait):
     #==========
     # Arrange
     #==========
@@ -51,7 +51,7 @@ def test_rename_chat(logged_in_driver, wait):
     wait.until(EC.invisibility_of_element(input_box)) # 이름 입력창 사라질 때 까지 대기
     assert new_name == chat_item.text.strip(), "입력한 이름과 변경된 이름이 일치하지 않습니다."
 
-def test_no_chat(logged_in_driver, wait):
+def test_chat_options_hidden_when_chat_list_empty(logged_in_driver, wait):
     #==========
     # Arrange
     #==========
