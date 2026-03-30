@@ -18,3 +18,21 @@ def rename_chat(logged_in_driver, wait):
     wait.until(
     lambda d: d.find_element(By.XPATH, "//li[normalize-space()='이름 변경']")
     ).click()
+
+    input_box = wait.until(lambda d: d.find_element(By.CSS_SELECTOR,
+        "div[role='dialog'] input[type='text']")
+    )
+
+    if input_box.get_attribute("value").strip() != "123":
+        new_name = "123"
+    else:
+        new_name = "456"
+    input_box.send_keys(Keys.CONTROL + "a")
+    input_box.send_keys(Keys.DELETE)
+    input_box.send_keys(new_name)
+
+    
+    save_btn = wait.until(
+        EC.element_to_be_clickable((By.CSS_SELECTOR, "button[type='submit']"))
+    )
+    save_btn.click()
