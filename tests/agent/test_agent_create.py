@@ -167,3 +167,30 @@ def test_agent_create_tabs_switch_clickable(navigate_to_agent_create, wait):
 
     # Assert(2): 역전환 결과 검증
     _assert_agent_create_tab_pressed_state(wait, chat_expected=False, form_expected=True)
+
+
+# 필수 텍스트 입력 필드 editable, 입력값 반영 여부로 검증 확인 (이름, 규칙)
+@pytest.mark.parametrize(
+    "locator, test_value",
+    [
+        pytest.param(AGENT_NAME_INPUT, "qa_name_editable_check", id="name_input"),
+        pytest.param(AGENT_SYSTEM_PROMPT_INPUT, "qa_system_prompt_editable_check", id="system_prompt_input"),
+    ],
+)
+def test_agent_create_name_input_editable(navigate_to_agent_create, wait, locator, test_value):
+    # Arrange
+    _ = navigate_to_agent_create
+
+    element = wait.until(EC.visibility_of_element_located(locator))
+    assert element.is_enabled(), f"필수 입력 필드가 비활성 상태입니다. locator={locator}"
+    assert element.get_attribute("readonly") is None, f"필수 입력 필드가 readonly 상태입니다. locator={locator}"
+
+    # Act: 입력값 초기화 후 테스트 값 입력
+    element.clear()
+    element.send_keys(test_value)
+
+    # Assert: 입력한 값이 실제 value에 반영되었는지 확인
+    assert element.get_attribute("value") == test_value, (
+        "필수 입력 필드에 입력한 값이 반영되지 않았습니다. "
+        f"locator={locator}, expected={test_value}, actual={element.get_attribute('value')}"
+    )
