@@ -49,5 +49,20 @@ def get_top_chat_item_or_none(wait):
         return get_top_chat_item(wait)
     except NoSuchElementException:
         return None
+    
+def click_search_menu(wait):
+    """검색 버튼 클릭"""
+    wait.until(
+        EC.element_to_be_clickable((By.XPATH, "//span[text()='검색']"))
+    ).click()        
+        
+def input_search_keyword(wait, keyword):
+    """검색 입력창에 키워드 입력"""
+    search_input = wait.until(
+        lambda d: d.find_element(By.CSS_SELECTOR, "input[placeholder='Search']")
+    )
+    search_input.clear()
+    search_input.send_keys(keyword)
+    return search_input
 
         
