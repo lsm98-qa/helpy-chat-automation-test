@@ -1,8 +1,12 @@
 ﻿import pytest
+from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 
 from locators.agent_create_locators import (
     AGENT_CONVERSATION_STARTER_INPUTS,
+    AGENT_CREATE_CHAT_TAB,
+    AGENT_CREATE_FORM_TAB,
+    AGENT_CREATE_TOGGLE_GROUP,
     AGENT_DESCRIPTION_INPUT,
     AGENT_FILE_UPLOAD_INPUT,
     AGENT_FILE_UPLOAD_LABEL,
@@ -15,7 +19,6 @@ from locators.agent_create_locators import (
     AGENT_TOOL_CHECKBOXES,
 )
 from locators.agent_locators import AGENT_CREATE_BUTTON
-
 
 @pytest.fixture
 def navigate_to_agent_create(navigate_to_agent_explore, wait):
@@ -95,3 +98,72 @@ def test_agent_create_form_core_elements_rendered(navigate_to_agent_create, wait
     # 우측 미리보기 패널 렌더링 확인
     preview_panel = wait.until(EC.visibility_of_element_located(AGENT_PREVIEW_PANEL_TITLE))
     assert preview_panel.is_displayed(), "우측 미리보기 패널이 화면에 표시되지 않았습니다."
+
+# 에이전트 생성 토글의 상태를 기대값(chat/form)과 비교 검증하는 공통 헬퍼
+def _assert_agent_create_tab_pressed_state(wait, chat_expected, form_expected):
+    chat_expected_str = "true" if chat_expected else "false"
+    form_expected_str = "true" if form_expected else "false"
+
+    wait.until(lambda d: d.find_element(*AGENT_CREATE_CHAT_TAB).get_attribute("aria-pressed") == chat_expected_str)
+    wait.until(lambda d: d.find_element(*AGENT_CREATE_FORM_TAB).get_attribute("aria-pressed") == form_expected_str)
+
+    chat_actual = wait.until(EC.presence_of_element_located(AGENT_CREATE_CHAT_TAB)).get_attribute("aria-pressed")
+    form_actual = wait.until(EC.presence_of_element_located(AGENT_CREATE_FORM_TAB)).get_attribute("aria-pressed")
+
+    assert chat_actual == chat_expected_str, (
+        f"chat 탭 aria-pressed 상태가 예상과 다릅니다. expected={chat_expected_str}, actual={chat_actual}"
+    )
+    assert form_actual == form_expected_str, (
+        f"form 탭 aria-pressed 상태가 예상과 다릅니다. expected={form_expected_str}, actual={form_actual}"
+    )
+
+
+# 토글 탭(chat/form)의 초기 렌더링 및 기본 선택 상태(단일 선택)를 검증
+def test_agent_create_tabs_initial_state(navigate_to_agent_create, wait):
+    _ = navigate_to_agent_create
+
+    # Arrange
+    group = wait.until(EC.visibility_of_element_located(AGENT_CREATE_TOGGLE_GROUP))
+    chat_tab = wait.until(EC.element_to_be_clickable(AGENT_CREATE_CHAT_TAB))
+    settings_tab = wait.until(EC.element_to_be_clickable(AGENT_CREATE_FORM_TAB))
+
+    # Assert
+    assert group.is_displayed(), "대화/설정 토글 그룹이 화면에 표시되지 않았습니다."
+    assert chat_tab.is_displayed() and chat_tab.is_enabled(), "chat 탭이 표시/활성 상태가 아닙니다."
+    assert settings_tab.is_displayed() and settings_tab.is_enabled(), "form 탭이 표시/활성 상태가 아닙니다."
+    assert chat_tab.get_attribute("value") == "chat", (
+        f"chat 탭 value가 예상과 다릅니다. actual={chat_tab.get_attribute('value')}"
+    )
+    assert settings_tab.get_attribute("value") == "form", (
+        f"form 탭 value가 예상과 다릅니다. actual={settings_tab.get_attribute('value')}"
+    )
+
+    initial_chat_pressed = chat_tab.get_attribute("aria-pressed")
+    initial_form_pressed = settings_tab.get_attribute("aria-pressed")
+    assert (initial_chat_pressed == "true") != (initial_form_pressed == "true"), (
+        "초기 상태에서 chat/form 중 정확히 1개만 선택되어야 합니다. "
+        f"chat={initial_chat_pressed}, form={initial_form_pressed}"
+    )
+
+
+# 토글 탭 전환을 순차 시나리오로 검증
+def test_agent_create_tabs_switch_clickable(navigate_to_agent_create, wait):
+    _ = navigate_to_agent_create
+
+    # Arrange
+    chat_tab = wait.until(EC.element_to_be_clickable(AGENT_CREATE_CHAT_TAB))
+    settings_tab = wait.until(EC.element_to_be_clickable(AGENT_CREATE_FORM_TAB))
+    assert chat_tab.is_enabled(), "chat 탭이 클릭 가능한 상태가 아닙니다."
+    assert settings_tab.is_enabled(), "form 탭이 클릭 가능한 상태가 아닙니다."
+
+    # Act(1): chat 탭으로 1차 전환
+    chat_tab.click()
+
+    # Assert(1): 1차 전환 결과 검증. 실패하면 시나리오를 중단한다.
+    _assert_agent_create_tab_pressed_state(wait, chat_expected=True, form_expected=False)
+
+    # Act(2): 1차 전환이 성공했을 때만 form 탭으로 역전환
+    wait.until(EC.element_to_be_clickable(AGENT_CREATE_FORM_TAB)).click()
+
+    # Assert(2): 역전환 결과 검증
+    _assert_agent_create_tab_pressed_state(wait, chat_expected=False, form_expected=True)
