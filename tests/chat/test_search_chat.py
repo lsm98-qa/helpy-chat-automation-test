@@ -16,7 +16,7 @@ def test_search_chat_and_open_chat_matches_title(logged_in_driver, wait):
     click_search_menu(wait)
 
     keyword = "B"
-    input_search_keyword(wait, keyword)
+    search_input = input_search_keyword(wait, keyword)
 
      # 검색 결과 로드 대기
     wait.until(lambda d: all(keyword in el.text for el in d.find_elements(By.CSS_SELECTOR, "div[role='dialog'] ul > li") if el.text.strip()))
@@ -38,3 +38,17 @@ def test_search_chat_and_open_chat_matches_title(logged_in_driver, wait):
         errors.append(f"누락된 결과가 있습니다.: {missing_results}")
 
     assert not errors, "\n".join(errors)
+
+    if search_chat_titles:
+        # 최상단 채팅 제목 저장
+        top_chat_title = wait.until(
+        lambda d: d.find_element(By.CSS_SELECTOR, "div[role='dialog'] ul > li span")
+        ).text.strip()
+        
+        # 최상단 채팅 진입
+        first_item = wait.until(
+            lambda d: d.find_element(By.CSS_SELECTOR, "div[role='dialog'] ul > li")
+        )
+        first_item.click()
+
+        wait.until(EC.invisibility_of_element(search_input)) # 검색 입력칸이 사라질 때 까지 대기
