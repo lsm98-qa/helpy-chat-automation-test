@@ -13,6 +13,9 @@ def test_search_chat_and_open_chat_matches_title(logged_in_driver, wait):
     
     all_chat_titles = get_all_chat_titles(wait)
     
+    #==========
+    # Act
+    #==========
     click_search_menu(wait)
 
     keyword = "B"
@@ -23,6 +26,9 @@ def test_search_chat_and_open_chat_matches_title(logged_in_driver, wait):
 
     search_chat_titles = get_visible_search_result_titles(wait) # 검색 결과 제목 조회, 수집
 
+    #==========
+    # Assert
+    #==========
     # 수집된 기록 중 검색어에 맞지 않는 결과 조회
     expected = [t for t in all_chat_titles if keyword in t]
 
@@ -40,6 +46,9 @@ def test_search_chat_and_open_chat_matches_title(logged_in_driver, wait):
     assert not errors, "\n".join(errors)
 
     if search_chat_titles:
+        #==========
+        # Act
+        #==========
         # 최상단 채팅 제목 저장
         top_chat_title = wait.until(
         lambda d: d.find_element(By.CSS_SELECTOR, "div[role='dialog'] ul > li span")
@@ -69,7 +78,10 @@ def test_search_chat_and_open_chat_matches_title(logged_in_driver, wait):
         ) 
         wait.until(lambda d: rename_menu.is_displayed() and rename_menu.is_enabled()) 
         rename_menu.click()
-
+        
+        #==========
+        # Assert
+        #==========
         # 이름 인풋 값 저장
         name_input_box = wait.until(
         lambda d: d.find_element(By.CSS_SELECTOR, "input[name='name']")
