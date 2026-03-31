@@ -117,6 +117,25 @@ def _assert_agent_create_tab_pressed_state(wait, chat_expected, form_expected):
         f"form 탭 aria-pressed 상태가 예상과 다릅니다. expected={form_expected_str}, actual={form_actual}"
     )
 
+def _is_create_button_disabled(button):
+    class_name = button.get_attribute("class") or ""
+    return (
+        (not button.is_enabled())
+        or (button.get_attribute("disabled") is not None)
+        or (button.get_attribute("aria-disabled") == "true")
+        or ("Mui-disabled" in class_name)
+    )
+
+
+def _is_create_button_enabled(button):
+    class_name = button.get_attribute("class") or ""
+    return (
+        button.is_enabled()
+        and (button.get_attribute("disabled") is None)
+        and (button.get_attribute("aria-disabled") != "true")
+        and ("Mui-disabled" not in class_name)
+    )
+
 
 # 토글 탭(chat/form)의 초기 렌더링 및 기본 선택 상태(단일 선택)를 검증
 def test_agent_create_tabs_initial_state(navigate_to_agent_create, wait):
@@ -197,13 +216,12 @@ def test_agent_create_name_input_editable(navigate_to_agent_create, wait, locato
 
 
 # 필수값 미입력 초기 상태에서 생성 버튼 비활성 확인
-def test_agent_create_submit_button_disabled_when_required_fields_empty (navigate_to_agent_create, wait):
+def test_agent_create_submit_button_disabled_when_required_fields_empty(navigate_to_agent_create, wait):
     # Arrange: 필수값 입력 필드 요소들을 가져온다. (이름, 규칙)
+    create_button_locator = (By.XPATH, "//button[normalize-space()='만들기']")
     name_input = wait.until(EC.visibility_of_element_located(AGENT_NAME_INPUT))
     system_prompt_input = wait.until(EC.visibility_of_element_located(AGENT_SYSTEM_PROMPT_INPUT))
-    create_button = wait.until(
-        EC.presence_of_element_located((By.XPATH, "//button[normalize-space()='만들기']"))
-    )
+    wait.until(EC.presence_of_element_located(create_button_locator))
 
     # Act: 필수값을 비워서 제출 불가능 상태를 만든다.
     name_input.clear()
@@ -212,7 +230,41 @@ def test_agent_create_submit_button_disabled_when_required_fields_empty (navigat
     wait.until(lambda d: (system_prompt_input.get_attribute("value") or "") == "")
 
     # Assert: "만들기" 버튼이 비활성인지 검증한다.
-    is_disabled_attr = create_button.get_attribute("disabled") is not None
-    is_aria_disabled = create_button.get_attribute("aria-disabled") == "true"
+    wait.until(lambda d: _is_create_button_disabled(d.find_element(*create_button_locator)))
 
-    assert (not create_button.is_enabled()) or is_disabled_attr or is_aria_disabled
+    create_button = wait.until(EC.presence_of_element_located(create_button_locator))
+    assert _is_create_button_disabled(create_button), '"만들기" 버튼이 비활성 상태가 아닙니다.'
+
+
+# 필수값 입력 상태에서 생성 버튼 활성 전환 확인
+def test_agent_create_submit_button_enabled_when_required_fields_filled(navigate_to_agent_create, wait):
+    driver = navigate_to_agent_create
+
+    # Arrange: 입력 필드와 "만들기" 버튼을 찾는다.
+    create_button_locator = (By.XPATH, "//button[normalize-space()='만들기']")
+    name_input = wait.until(EC.visibility_of_element_located(AGENT_NAME_INPUT))
+    system_prompt_input = wait.until(EC.visibility_of_element_located(AGENT_SYSTEM_PROMPT_INPUT))
+    wait.until(EC.presence_of_element_located(create_button_locator))
+
+    # Act: 필수값을 먼저 비워 비활성 상태를 만든 뒤, 유효한 값을 입력한다.
+    name_input.clear()
+    system_prompt_input.clear()
+    wait.until(lambda d: (name_input.get_attribute("value") or "") == "")
+    wait.until(lambda d: (system_prompt_input.get_attribute("value") or "") == "")
+    wait.until(lambda d: _is_create_button_disabled(d.find_element(*create_button_locator)))
+
+    name_input.send_keys("qa_submit_enable_name")
+    system_prompt_input.send_keys("qa_submit_enable_system_prompt")
+    wait.until(lambda d: (name_input.get_attribute("value") or "") == "qa_submit_enable_name")
+    wait.until(lambda d: (system_prompt_input.get_attribute("value") or "") == "qa_submit_enable_system_prompt")
+    
+    # 마지막 입력 필드의 blur를 유도해 검증/상태 갱신이 완료된 뒤 버튼 활성 여부를 확인한다.
+    driver.execute_script("arguments[0].blur();", system_prompt_input)
+
+    # Assert: "만들기" 버튼이 활성 상태로 전환되는지 검증한다.
+    wait.until(
+        lambda d: _is_create_button_enabled(d.find_element(*create_button_locator))
+    )
+
+    create_button = wait.until(EC.presence_of_element_located(create_button_locator))
+    assert _is_create_button_enabled(create_button), '"만들기" 버튼이 활성 상태로 전환되지 않았습니다.'
