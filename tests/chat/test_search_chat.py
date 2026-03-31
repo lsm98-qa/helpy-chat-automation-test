@@ -52,3 +52,28 @@ def test_search_chat_and_open_chat_matches_title(logged_in_driver, wait):
         first_item.click()
 
         wait.until(EC.invisibility_of_element(search_input)) # 검색 입력칸이 사라질 때 까지 대기
+
+        # 메인 영역 버튼 중 최하단 버튼(옵션 버튼) 클릭 
+        chat_option_btn = wait.until(
+        lambda d: next(
+            (btn for btn in d.find_elements(By.CSS_SELECTOR, "main button[type='button']")
+                if btn.is_displayed() and btn.is_enabled() and not btn.text.strip()
+            ), False
+            )
+        )
+        chat_option_btn.click()
+
+        # 옵션 메뉴 중 첫번째 메뉴(이름 변경) 클릭
+        rename_menu = wait.until(
+        lambda d: d.find_element(By.CSS_SELECTOR, "ul[role='menu'] > li[role='menuitem']:first-child")
+        ) 
+        wait.until(lambda d: rename_menu.is_displayed() and rename_menu.is_enabled()) 
+        rename_menu.click()
+
+        # 이름 인풋 값 저장
+        name_input_box = wait.until(
+        lambda d: d.find_element(By.CSS_SELECTOR, "input[name='name']")
+        )
+
+        name_input_value = name_input_box.get_attribute("value")
+        assert name_input_value == top_chat_title, "선택한 채팅과 이름이 일치하지 않습니다."
