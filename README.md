@@ -1,93 +1,99 @@
-# helpy-chat-automation-test-team2
+﻿# Helpy Chat Automation Test TEAM2
 
+Selenium + Pytest 기반의 E2E(UI) 자동화 테스트 프로젝트입니다.
+`https://qaproject.elice.io/ai-helpy-chat` 서비스의 로그인, 채팅, 에이전트, 도구(PPT 생성) 핵심 시나리오를 검증합니다.
 
+## 1) 기술 스택
 
-## Getting started
+- Python
+- Pytest
+- Selenium WebDriver (Chrome)
+- python-dotenv
+- python-pptx (PPT 생성 결과 검증용)
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+## 2) 디렉터리 구조
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
-
-## Add your files
-
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
-
+```text
+.
+|- conftest.py                  # 공통 fixture/드라이버/로그인 설정
+|- pages/                       # 페이지 액션
+|- locators/                    # UI locator 모음
+|- tests/
+|  |- auth/                     # 로그인/로그아웃
+|  |- chat/                     # 채팅 기능
+|  |- agent/                    # 에이전트 기능
+|  `- tools/                    # 도구 기능 (PPT 생성 등)
+|- requirements.txt
+`- SETUP.md
 ```
-cd existing_repo
-git remote add origin https://kdt-gitlab.elice.io/qa_track/class_04/qa-project1/team2/helpy-chat-automation-test-team2.git
-git branch -M main
-git push -uf origin main
+
+## 3) 사전 준비
+
+- Python 3.10+ 권장
+- Google Chrome 설치
+- 테스트 계정 준비
+
+## 4) 설치
+
+```bash
+pip install -r requirements.txt
 ```
 
-## Integrate with your tools
+## 5) 환경 변수 설정
 
-- [ ] [Set up project integrations](https://kdt-gitlab.elice.io/qa_track/class_04/qa-project1/team2/helpy-chat-automation-test-team2/-/settings/integrations)
+프로젝트 루트에 `.env` 파일을 만들고 아래 값을 설정합니다.
 
-## Collaborate with your team
+```env
+ACCOUNT_EMAIL=your_account_email
+ACCOUNT_PASSWORD=your_account_password
+```
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+`conftest.py`에서 위 값을 로드해 로그인 fixture에서 사용합니다.
 
-## Test and Deploy
+## 6) 테스트 실행
 
-Use the built-in continuous integration in GitLab.
+전체 실행:
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+```bash
+pytest
+```
 
-***
+헤드리스 실행:
 
-# Editing this README
+```bash
+pytest --headless
+```
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+기본 URL 변경:
 
-## Suggestions for a good README
+```bash
+pytest --base-url "https://qaproject.elice.io/ai-helpy-chat"
+```
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+영역별 실행 예시:
 
-## Name
-Choose a self-explaining name for your project.
+```bash
+pytest tests/auth
+pytest tests/chat
+pytest tests/agent
+pytest tests/tools
+```
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+## 7) 주요 테스트 범위
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+- `auth`: 로그인 성공/실패, 로그아웃, 멀티탭 로그아웃
+- `chat`: 새 채팅 생성, 히스토리 동작, 채팅 이름 변경, 이미지 생성
+- `agent`: 에이전트 탐색/생성 화면 이동 및 기본 동작
+- `tools`: 도구 메뉴 진입, PPT 생성, 결과 파일 검증
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+## 8) 참고 사항
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+- `tests/tools/ppt_create/test_ppt_create.py`는 현재 알려진 이슈로 `xfail` 처리되어 있습니다.
+- PPT 생성 테스트 결과물은 `tests/tools/ppt_create/downloads` 경로에 저장됩니다.
+- 브라우저 실행 옵션/공통 fixture는 루트 `conftest.py`를 기준으로 관리합니다.
+- 각 기능 단위 별 fixture와 constants는 해당 디렉토리에서 관리합니다.
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+## 9) 변경 이력
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
-
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+- 릴리즈/변경 이력은 `CHANGELOG.md`에서 관리합니다.
+- 새로운 배포가 있을 때는 최신 버전을 문서 상단에 누적해서 추가합니다.

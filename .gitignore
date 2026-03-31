@@ -1,0 +1,25 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# 가상환경
+venv/
+.venv/
+
+# 환경변수
+.env
+
+# pytest
+.pytest_cache/
+
+# IDE (VSCode)
+.vscode/
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# downloaded PPT 파일 (테스트 결과)
+downloads/
