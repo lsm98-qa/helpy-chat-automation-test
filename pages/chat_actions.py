@@ -100,4 +100,20 @@ def input_search_keyword(wait, keyword):
     search_input.send_keys(keyword)
     return search_input
 
+def get_visible_search_result_titles(wait):
+    """조회된 검색 결과 제목 수집"""
+    dialog = wait.until(
+        lambda d: d.find_element(By.CSS_SELECTOR, "div[role='dialog']")
+    )
+
+    items = dialog.find_elements(By.CSS_SELECTOR, "ul > li")
+
+    search_chat_titles = []
+    for item in items:
+        text = item.text.strip()
+        if text:
+            search_chat_titles.append(text)
+
+    return search_chat_titles
+
         
