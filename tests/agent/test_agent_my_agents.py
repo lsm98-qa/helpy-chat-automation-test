@@ -223,3 +223,74 @@ def test_click_delete_button_opens_delete_confirmation_modal (navigate_to_agent_
     assert "에이전트 삭제" in dialog.text, "삭제 확인 모달 제목이 올바르지 않습니다."
     assert "취소" in dialog.text and "삭제" in dialog.text, "삭제 확인 모달 버튼이 표시되지 않습니다."
 
+
+#==========
+# 삭제 수행 후 해당 에이전트가 목록에서 사라지는지 테스트
+#==========
+def test_deleted_agent_is_removed_from_list(navigate_to_agent_explore, wait):
+    # Arrange
+    driver = navigate_to_agent_explore
+
+    wait.until(EC.element_to_be_clickable(AGENT_MY_AGENTS_BUTTON)).click()
+    wait.until(EC.url_contains("/ai-helpy-chat/agents/mine"))
+    wait.until(
+        EC.presence_of_element_located(
+            (By.XPATH, "//div[@data-testid='virtuoso-item-list']")
+        )
+    )
+
+    agent_items = driver.find_elements(
+        By.XPATH,
+        "//div[@data-testid='virtuoso-item-list']/div[@data-item-index]",
+    )
+    if not agent_items:
+        pytest.skip("삭제 동작을 검증할 에이전트 카드가 없습니다.")
+
+    target_agent_id = None
+    target_delete_button = None
+
+    for item in agent_items:
+        card_links = item.find_elements(
+            By.CSS_SELECTOR,
+            "a[href*='/ai-helpy-chat/agents/']",
+        )
+        delete_buttons = item.find_elements(
+            By.CSS_SELECTOR,
+            "button:has(svg[data-icon='trash'])",
+        )
+        if not card_links or not delete_buttons:
+            continue
+
+        href = card_links[0].get_attribute("href")
+        marker = "/ai-helpy-chat/agents/"
+        if marker not in href:
+            continue
+
+        target_agent_id = href.split(marker, 1)[1].split("/", 1)[0]
+        target_delete_button = delete_buttons[0]
+        break
+
+    if not target_agent_id or not target_delete_button:
+        pytest.skip("삭제 가능한 에이전트 카드를 찾지 못했습니다.")
+
+    # Act
+    wait.until(EC.element_to_be_clickable(target_delete_button)).click()
+    dialog = wait.until(
+        EC.visibility_of_element_located((By.CSS_SELECTOR, "div[role='dialog']"))
+    )
+    confirm_delete_button = dialog.find_element(
+        By.XPATH,
+        ".//button[normalize-space()='삭제']",
+    )
+    wait.until(EC.element_to_be_clickable(confirm_delete_button)).click()
+
+    # Assert
+    target_agent_link_selector = f"a[href*='/ai-helpy-chat/agents/{target_agent_id}']"
+    wait.until(
+        lambda d: len(d.find_elements(By.CSS_SELECTOR, target_agent_link_selector)) == 0
+    )
+    remaining_links = driver.find_elements(By.CSS_SELECTOR, target_agent_link_selector)
+    assert len(remaining_links) == 0, (
+        f"삭제 후에도 대상 에이전트({target_agent_id})가 목록에 남아 있습니다."
+    )
+
