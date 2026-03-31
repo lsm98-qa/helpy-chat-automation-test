@@ -175,3 +175,51 @@ def test_click_edit_button_navigates_to_edit_page(navigate_to_agent_explore, wai
     expected_path = f"/ai-helpy-chat/agents/{target_agent_id}/builder"
     wait.until(EC.url_contains(expected_path))
     assert expected_path in driver.current_url, "수정 페이지 URL이 선택한 에이전트와 일치하지 않습니다."
+
+
+#==========
+# 삭제 버튼 클릭 시 확인 모달이 정상적으로 시작되는지 테스트
+#==========
+def test_click_delete_button_opens_delete_confirmation_modal (navigate_to_agent_explore, wait):
+    # Arrange
+    driver = navigate_to_agent_explore
+
+    wait.until(EC.element_to_be_clickable(AGENT_MY_AGENTS_BUTTON)).click()
+    wait.until(EC.url_contains("/ai-helpy-chat/agents/mine"))
+    wait.until(
+        EC.presence_of_element_located(
+            (By.XPATH, "//div[@data-testid='virtuoso-item-list']")
+        )
+    )
+
+    agent_items = driver.find_elements(
+        By.XPATH,
+        "//div[@data-testid='virtuoso-item-list']/div[@data-item-index]",
+    )
+    if not agent_items:
+        pytest.skip("삭제 버튼 클릭 동작을 검증할 에이전트 카드가 없습니다.")
+
+    target_delete_button = None
+    for item in agent_items:
+        delete_buttons = item.find_elements(
+            By.CSS_SELECTOR,
+            "button:has(svg[data-icon='trash'])",
+        )
+        if delete_buttons:
+            target_delete_button = delete_buttons[0]
+            break
+
+    if not target_delete_button:
+        pytest.skip("삭제 버튼이 있는 에이전트 카드를 찾지 못했습니다.")
+
+    # Act
+    wait.until(EC.element_to_be_clickable(target_delete_button)).click()
+
+    # Assert
+    dialog = wait.until(
+        EC.visibility_of_element_located((By.CSS_SELECTOR, "div[role='dialog']"))
+    )
+    assert dialog.is_displayed(), "삭제 확인 모달이 표시되지 않습니다."
+    assert "에이전트 삭제" in dialog.text, "삭제 확인 모달 제목이 올바르지 않습니다."
+    assert "취소" in dialog.text and "삭제" in dialog.text, "삭제 확인 모달 버튼이 표시되지 않습니다."
+
