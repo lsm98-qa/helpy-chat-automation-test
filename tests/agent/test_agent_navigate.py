@@ -10,7 +10,7 @@ def test_navigate_to_agent_explore(navigate_to_agent_explore, wait):
     driver = navigate_to_agent_explore
 
     # Act
-    agent_title = wait.until(EC.presence_of_element_located(*MENU_H2_TITLE))
+    agent_title = wait.until(EC.presence_of_element_located(MENU_H2_TITLE))
 
     # Assert
     assert agent_title.text == "에이전트 탐색"
