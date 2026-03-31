@@ -194,3 +194,25 @@ def test_agent_create_name_input_editable(navigate_to_agent_create, wait, locato
         "필수 입력 필드에 입력한 값이 반영되지 않았습니다. "
         f"locator={locator}, expected={test_value}, actual={element.get_attribute('value')}"
     )
+
+
+# 필수값 미입력 초기 상태에서 생성 버튼 비활성 확인
+def test_agent_create_submit_button_disabled_when_required_fields_empty (navigate_to_agent_create, wait):
+    # Arrange: 필수값 입력 필드 요소들을 가져온다. (이름, 규칙)
+    name_input = wait.until(EC.visibility_of_element_located(AGENT_NAME_INPUT))
+    system_prompt_input = wait.until(EC.visibility_of_element_located(AGENT_SYSTEM_PROMPT_INPUT))
+    create_button = wait.until(
+        EC.presence_of_element_located((By.XPATH, "//button[normalize-space()='만들기']"))
+    )
+
+    # Act: 필수값을 비워서 제출 불가능 상태를 만든다.
+    name_input.clear()
+    system_prompt_input.clear()
+    wait.until(lambda d: (name_input.get_attribute("value") or "") == "")
+    wait.until(lambda d: (system_prompt_input.get_attribute("value") or "") == "")
+
+    # Assert: "만들기" 버튼이 비활성인지 검증한다.
+    is_disabled_attr = create_button.get_attribute("disabled") is not None
+    is_aria_disabled = create_button.get_attribute("aria-disabled") == "true"
+
+    assert (not create_button.is_enabled()) or is_disabled_attr or is_aria_disabled
