@@ -268,3 +268,50 @@ def test_agent_create_submit_button_enabled_when_required_fields_filled(navigate
 
     create_button = wait.until(EC.presence_of_element_located(create_button_locator))
     assert _is_create_button_enabled(create_button), '"만들기" 버튼이 활성 상태로 전환되지 않았습니다.'
+
+
+# 에이전트 생성 시 공개 설정 모달에서 저장 완료 후 성공 토스트가 노출되는지 검증
+def test_agent_create_shows_success_toast(navigate_to_agent_create, wait):
+    from uuid import uuid4
+
+    # Arrange
+    driver = navigate_to_agent_create
+    create_button_locator = (By.XPATH, "//button[normalize-space()='만들기']")
+    publish_modal_locator = (
+        By.XPATH,
+        "//div[@role='dialog' and .//form[@id='publish-setting-form']]",
+    )
+    publish_modal_save_button_locator = (
+        By.XPATH,
+        "//div[@role='dialog' and .//form[@id='publish-setting-form']]//button[@type='submit' and @form='publish-setting-form']",
+    )
+
+    # 랜덤한 이름 문자열 생성
+    unique_agent_name = f"qa-agent-{uuid4().hex[:8]}"
+
+    name_input = wait.until(EC.visibility_of_element_located(AGENT_NAME_INPUT))
+    system_prompt_input = wait.until(EC.visibility_of_element_located(AGENT_SYSTEM_PROMPT_INPUT))
+
+    name_input.clear()
+    name_input.send_keys(unique_agent_name)
+    system_prompt_input.clear()
+    system_prompt_input.send_keys("You are a helpful assistant.")
+
+    driver.execute_script("arguments[0].blur();", system_prompt_input)
+
+    wait.until(lambda d: _is_create_button_enabled(d.find_element(*create_button_locator)))
+
+    # Act
+    wait.until(EC.element_to_be_clickable(create_button_locator)).click()
+    wait.until(EC.visibility_of_element_located(publish_modal_locator))
+    wait.until(EC.element_to_be_clickable(publish_modal_save_button_locator)).click()
+
+    # Assert
+    wait.until(
+        EC.visibility_of_element_located(
+            (
+                By.XPATH,
+                "//*[@role='alert' and (contains(@class, 'notistack-MuiContent-success') or .//*[@data-testid='circle-checkIcon'])]",
+            )
+        )
+    )
