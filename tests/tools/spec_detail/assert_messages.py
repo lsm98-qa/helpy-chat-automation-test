@@ -1,0 +1,5 @@
+NAME_INPUT_AREA_NOT_DISPLAYED = "학생 이름 입력 화면이 나타나지 않았습니다."
+SCHOOL_LEVEL_NOT_SAVED = "학교급이 저장되지 않았습니다."
+GRADE_NOT_SAVED = "학년이 저장되지 않았습니다."
+SUBJECT_NOT_SAVED = "과목이 저장되지 않았습니다."
+UNIT_NOT_SAVED = "단원이 저장되지 않았습니다."
