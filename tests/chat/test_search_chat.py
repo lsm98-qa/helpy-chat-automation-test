@@ -1,4 +1,4 @@
-from selenium.webdriver.common.by import By
+﻿from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from pages.chat_actions import click_search_menu, get_all_chat_titles, input_search_keyword, get_visible_search_result_titles
 
@@ -7,10 +7,12 @@ def test_search_chat_and_open_chat_matches_title(logged_in_driver, wait):
     #==========
     # Arrange
     #==========
+    # 로그인
     logged_in_driver
 
     wait.until(lambda d: len(d.find_elements(By.CSS_SELECTOR, "a[data-index]")) > 0) # 채팅 기록이 로드될 때까지 대기
     
+    # 전체 채팅 제목 수집
     all_chat_titles = get_all_chat_titles(wait)
     
     #==========
@@ -18,18 +20,20 @@ def test_search_chat_and_open_chat_matches_title(logged_in_driver, wait):
     #==========
     click_search_menu(wait)
 
-    keyword = "B"
+    keyword = "A"
+
+    # 검색어 입력
     search_input = input_search_keyword(wait, keyword)
 
-     # 검색 결과 로드 대기
+    # 검색 결과 로드 대기
     wait.until(lambda d: all(keyword in el.text for el in d.find_elements(By.CSS_SELECTOR, "div[role='dialog'] ul > li") if el.text.strip()))
 
-    search_chat_titles = get_visible_search_result_titles(wait) # 검색 결과 제목 조회, 수집
+    search_chat_titles = get_visible_search_result_titles(wait) # 검색 결과 제목 조회
 
     #==========
     # Assert
     #==========
-    # 수집된 기록 중 검색어에 맞지 않는 결과 조회
+    # 검색어가 포함된 제목만 기대값으로 사용
     expected = [t for t in all_chat_titles if keyword in t]
 
     invalid_results = [t for t in expected if keyword not in t] # 검색어 미포함 결과
@@ -49,20 +53,20 @@ def test_search_chat_and_open_chat_matches_title(logged_in_driver, wait):
         #==========
         # Act
         #==========
-        # 최상단 채팅 제목 저장
+        # 최상단 검색 결과 제목 저장
         top_chat_title = wait.until(
         lambda d: d.find_element(By.CSS_SELECTOR, "div[role='dialog'] ul > li span")
         ).text.strip()
         
-        # 최상단 채팅 진입
+        # 최상단 검색 결과 클릭
         first_item = wait.until(
             lambda d: d.find_element(By.CSS_SELECTOR, "div[role='dialog'] ul > li")
         )
         first_item.click()
 
-        wait.until(EC.invisibility_of_element(search_input)) # 검색 입력칸이 사라질 때 까지 대기
+        wait.until(EC.invisibility_of_element(search_input)) # 검색 입력창이 사라질 때까지 대기
 
-        # 메인 영역 버튼 중 최하단 버튼(옵션 버튼) 클릭 
+        # 메인 영역의 옵션 버튼 클릭
         chat_option_btn = wait.until(
         lambda d: next(
             (btn for btn in d.find_elements(By.CSS_SELECTOR, "main button[type='button']")
@@ -72,7 +76,7 @@ def test_search_chat_and_open_chat_matches_title(logged_in_driver, wait):
         )
         chat_option_btn.click()
 
-        # 옵션 메뉴 중 첫번째 메뉴(이름 변경) 클릭
+        # 옵션 메뉴의 첫 번째 항목 클릭
         rename_menu = wait.until(
         lambda d: d.find_element(By.CSS_SELECTOR, "ul[role='menu'] > li[role='menuitem']:first-child")
         ) 
@@ -82,7 +86,7 @@ def test_search_chat_and_open_chat_matches_title(logged_in_driver, wait):
         #==========
         # Assert
         #==========
-        # 이름 인풋 값 저장
+        # 이름 입력값 확인
         name_input_box = wait.until(
         lambda d: d.find_element(By.CSS_SELECTOR, "input[name='name']")
         )
