@@ -1,22 +1,28 @@
-from selenium.webdriver.common.by import By
+﻿from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from pages.chat_actions import click_new_chat
 
+
+# =========================
+# 대화의 이미지 생성 기능을 사용했을 때 이미지 정상 출력 여부 검증
+# =========================
 def test_chat_generates_and_displays_image(logged_in_driver, wait):
     #==========
     # Arrange
     #==========
+    # 로그인
     driver = logged_in_driver
 
-    
-    # 새 대화 클릭
-    click_new_chat(wait)
 
     #==========
     # Act
     #==========
+
+    # 새 대화 시작
+    click_new_chat(wait)
+
     # 입력창 확인
     chat_input = wait.until(
         EC.presence_of_element_located(
@@ -24,7 +30,7 @@ def test_chat_generates_and_displays_image(logged_in_driver, wait):
         )
     )
 
-    # 좌측 + 버튼 클릭
+    # 플러스 버튼 클릭
     plus_btn = wait.until(
         EC.presence_of_element_located(
             (By.CSS_SELECTOR, "[data-testid='plusIcon']")
@@ -41,7 +47,7 @@ def test_chat_generates_and_displays_image(logged_in_driver, wait):
     )
     image_menu.click()
 
-    # 생성할 이미지 내용 전송
+    # 이미지 생성 요청 전송
     chat_input.click()
     chat_input.send_keys("강아지 이미지 생성해줘")
     chat_input.send_keys(Keys.ENTER)
@@ -49,7 +55,7 @@ def test_chat_generates_and_displays_image(logged_in_driver, wait):
     #==========
     # Assert
     #==========
-    # 채팅 본문에 로드 완료된 이미지가 보일 때까지 대기
+    # 생성된 이미지가 표시되는지 확인
     wait_image = WebDriverWait(driver, 60)
     assert wait_image.until(
         lambda d: len(

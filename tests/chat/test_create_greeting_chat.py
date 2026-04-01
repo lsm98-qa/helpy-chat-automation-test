@@ -8,21 +8,30 @@ from tests.chat.constants import GREETING_REPLY_TEST_CASES
     "question, expected_keywords",
     GREETING_REPLY_TEST_CASES,
 )
+
+# =========================
+# 질문이나 대화를 전송했을 때 그에 맞는 키워드가 포함된 응답을 하는 지 검증
+# =========================
 def test_new_chat_receives_expected_greeting_reply(logged_in_driver, wait, question, expected_keywords):
     #==========
     # Arrange
     #==========
+    # 로그인
     _ = logged_in_driver
 
     #==========
     # Act
     #==========
+    # 새 대화 시작
     click_new_chat(wait)
+
+    # 대화말 또는 질문 전송
     send_chat_message(wait, question)
 
     #==========
     # Assert
     #==========
+    # 내가 보낸 대화와 다른 내용의 응답이 있는지 / 응답 안에 기대 키워드가 하나 이상 포함되어 있는지 검증
     assert wait.until(
         lambda d: any(
             len(t) > 4 and t != question and any(keyword in t for keyword in expected_keywords)
