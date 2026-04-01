@@ -60,18 +60,22 @@ def get_all_chat_titles(wait):
     seen = set()
 
     while True:
-        # 현재 화면에 보이는 채팅 항목 수집
-        chat_items = driver.find_elements(By.CSS_SELECTOR, "a[data-index]")
+        try:
+            # 현재 화면에 보이는 채팅 항목 수집
+            chat_items = driver.find_elements(By.CSS_SELECTOR, "a[data-index]")
 
-        for item in chat_items:
-            # 채팅 제목과 링크 가져오기
-            title = item.text.strip()
-            link = item.get_attribute("href")
+            for item in chat_items:
+                # 채팅 제목과 링크 가져오기
+                title = item.text.strip()
+                link = item.get_attribute("href")
 
-            if title and link not in seen:
-                 # 제목이 있고, 아직 저장하지 않은 채팅이면 목록에 추가
-                seen.add(link)
-                titles.append(title)
+                # 제목이 있고, 아직 저장하지 않은 채팅이면 목록에 추가
+                if title and link and link not in seen:
+                    seen.add(link)
+                    titles.append(title)
+
+        except StaleElementReferenceException:
+            continue
 
         prev_scroll = driver.execute_script("return arguments[0].scrollTop", scroller)
         driver.execute_script("arguments[0].scrollTop += arguments[0].clientHeight", scroller)
