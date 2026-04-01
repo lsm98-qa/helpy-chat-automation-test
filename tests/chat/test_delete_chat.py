@@ -1,15 +1,19 @@
-from selenium.webdriver.common.by import By
+﻿from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
-from pages.chat_actions import get_top_chat_item_or_none, click_top_chat_item_option_button, get_top_chat_item 
+from pages.chat_actions import get_top_chat_item_or_none, click_top_chat_item_option_button, _get_top_chat_item
 import pytest
 from selenium.webdriver.common.action_chains import ActionChains
 
 state = {"deleted": False}
 
+# =========================
+# 채팅 삭제 기능이 정상적으로 동작하는 지 검증
+# =========================
 def test_can_delete_top_chat_item(logged_in_driver, wait):
     #==========
     # Arrange
-    #==========
+    #========
+    # 로그인
     driver = logged_in_driver
     chat = get_top_chat_item_or_none(wait)
     if chat is None:
@@ -20,14 +24,14 @@ def test_can_delete_top_chat_item(logged_in_driver, wait):
     #==========
     # 채팅 목록에서 옵션 열기
     click_top_chat_item_option_button(wait)
-    delete_before_top_chat = get_top_chat_item(wait)
+    delete_before_top_chat = _get_top_chat_item(wait)
 
     # 삭제 메뉴 클릭
     delete_menu = wait.until(
-    lambda d: d.find_element(By.XPATH, "//li[normalize-space()='삭제']"))
+        lambda d: d.find_element(By.XPATH, "//li[normalize-space()='삭제']"))
     delete_menu.click()
 
-    # 삭제 확인 팝업의 '삭제' 버튼 클릭
+    # 삭제 확인 버튼 클릭
     buttons = wait.until(
         lambda d: d.find_elements(By.CSS_SELECTOR, "div[role='dialog'] button")
     )
@@ -37,7 +41,7 @@ def test_can_delete_top_chat_item(logged_in_driver, wait):
     #==========
     # Assert
     #==========
-    # 삭제 전 채팅 요소가 사라질 때 까지 대기기
+    # 삭제 전 채팅 요소가 사라질 때까지 대기
     wait.until(EC.staleness_of(delete_before_top_chat))
     
     
@@ -49,9 +53,9 @@ def test_can_delete_top_chat_item(logged_in_driver, wait):
         "[data-testid='virtuoso-scroller'] a[data-index]"
     )
     
-    # 채팅이 남은 경우 최상단 채팅 요소로 비교 검증
+    # 채팅이 남아 있으면 최상단 항목 비교
     if len(chat_items) > 0:
-        delete_after_top_chat = get_top_chat_item(wait)
+        delete_after_top_chat = _get_top_chat_item(wait)
         assert delete_after_top_chat != delete_before_top_chat, "채팅 기록이 삭제되지 않았습니다."
 
     else:
