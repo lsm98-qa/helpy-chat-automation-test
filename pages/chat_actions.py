@@ -37,13 +37,9 @@ def click_top_chat_item_option_button(wait):
 
     # 옵션 버튼이 클릭 가능할 때까지 포인터 유지
     option_button = wait.until(lambda d: (
-    ActionChains(d).move_to_element(chat_item).perform(),
-    d.find_element(
-        By.CSS_SELECTOR,
-        "[data-testid='virtuoso-scroller'] a[data-index='0'] svg[data-icon='ellipsis-vertical']"
-        )
-    )[1])
-
+        ActionChains(d).move_to_element(chat_item).perform() or
+        d.find_element(By.CSS_SELECTOR, "a[data-index='0'] button")
+    ))
     option_button.click()
 
 # 최상단 채팅 항목이 있으면 반환하고, 없으면 None 반환

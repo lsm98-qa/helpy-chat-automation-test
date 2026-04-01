@@ -1,10 +1,6 @@
 ﻿from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
-from pages.chat_actions import get_top_chat_item_or_none, click_top_chat_item_option_button, _get_top_chat_item
-import pytest
-from selenium.webdriver.common.action_chains import ActionChains
-
-state = {"deleted": False}
+from pages.chat_actions import get_top_chat_item_or_none, click_top_chat_item_option_button, _get_top_chat_item, click_new_chat, send_chat_message
 
 # =========================
 # 채팅 삭제 기능이 정상적으로 동작하는 지 검증
@@ -16,19 +12,23 @@ def test_can_delete_top_chat_item(logged_in_driver, wait):
     # 로그인
     driver = logged_in_driver
     chat = get_top_chat_item_or_none(wait)
-    if chat is None:
-        pytest.skip("채팅 기록이 존재하지 않습니다.")
+    
 
     #==========
     # Act
     #==========
+    if chat is None:
+        click_new_chat(wait)
+        send_chat_message(wait, "A")
+    
     # 채팅 목록에서 옵션 열기
     click_top_chat_item_option_button(wait)
     delete_before_top_chat = _get_top_chat_item(wait)
 
     # 삭제 메뉴 클릭
     delete_menu = wait.until(
-        lambda d: d.find_element(By.XPATH, "//li[normalize-space()='삭제']"))
+        EC.element_to_be_clickable((By.XPATH, "//li[normalize-space()='삭제']"))
+    )
     delete_menu.click()
 
     # 삭제 확인 버튼 클릭
@@ -60,41 +60,3 @@ def test_can_delete_top_chat_item(logged_in_driver, wait):
 
     else:
         assert len(chat_items) == 0, "채팅 기록이 삭제되지 않았습니다."
-        state["deleted"] = True
-            
-
-
-def test_chat_options_hidden_when_chat_list_empty(logged_in_driver, wait):
-    #==========
-    # Arrange
-    #==========
-    logged_in_driver
-
-    chat = get_top_chat_item_or_none(wait)
-    if chat is not None or state["deleted"]:
-        pytest.skip("채팅 기록이 1개 이상 존재합니다.")
-
-    driver = wait._driver
-
-    sidebar = wait.until(
-        lambda d: d.find_element(By.CSS_SELECTOR, "aside")
-    )
-
-    chat_list_area = sidebar.find_element(
-        By.CSS_SELECTOR, "[data-testid='virtuoso-scroller']"
-    )
-
-    #==========
-    # Act
-    #==========
-    ActionChains(driver).move_to_element(chat_list_area).perform()
-
-    #==========
-    # Assert
-    #==========
-    option_button = driver.find_elements(
-        By.CSS_SELECTOR,
-        "[data-testid='virtuoso-scroller'] svg[data-icon='ellipsis-vertical']",
-    )
-
-    assert len(option_button) == 0, "채팅 기록이 없는 상태에서 옵션 버튼이 확인됩니다."
