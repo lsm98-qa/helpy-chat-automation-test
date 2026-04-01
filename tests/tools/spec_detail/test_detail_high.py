@@ -12,104 +12,122 @@ from tests.tools.spec_detail.assert_messages import (
 from tests.tools.spec_detail.input_values import SUBJECT_INPUT, UNIT_INPUT
 
 
-def find(driver, by, value):
+# 요소가 화면에 표시될 때까지 기다린 뒤 반환하는 헬퍼
+def _find(driver, by, value):
     return WebDriverWait(driver, 10).until(
         EC.visibility_of_element_located((by, value))
     )
 
 
-def click(driver, by, value):
+# 요소가 클릭 가능할 때까지 기다린 뒤 클릭하는 헬퍼
+def _click(driver, by, value):
     WebDriverWait(driver, 10).until(
         EC.element_to_be_clickable((by, value))
     ).click()
 
 
-def type_text(driver, by, value, text):
-    element = find(driver, by, value)
+# 입력 필드를 비운 뒤 새 텍스트를 입력하는 헬퍼
+def _type_text(driver, by, value, text):
+    element = _find(driver, by, value)
     element.click()
     element.send_keys(Keys.CONTROL, "a")
     element.send_keys(Keys.BACKSPACE)
     element.send_keys(text)
 
 
-def test_spec_create(logged_in_driver):
-    driver = logged_in_driver
-
-    # =========================
-    # Arrange (준비)
-    # =========================
-
-    # 도구 → 세부 특기사항 진입
-    click(driver, By.XPATH, "//span[text()='도구']")
-    click(driver, By.XPATH, "//p[text()='세부 특기사항']")
-
-    # 입력 내역 초기화 버튼 있으면 초기화
+# 입력 내역 초기화 버튼이 있으면 초기화하는 헬퍼
+def _reset_input_history_if_exists(driver):
     try:
         reset_btn = WebDriverWait(driver, 3).until(
-            EC.element_to_be_clickable((By.XPATH, "//button[contains(., '입력 내역 초기화')]"))
+            EC.element_to_be_clickable(
+                (By.XPATH, "//button[contains(., '입력 내역 초기화')]")
+            )
         )
         reset_btn.click()
 
         confirm_btn = WebDriverWait(driver, 5).until(
-            EC.element_to_be_clickable((By.XPATH, "//button[contains(., '초기화 하기')]"))
+            EC.element_to_be_clickable(
+                (By.XPATH, "//button[contains(., '초기화 하기')]")
+            )
         )
         confirm_btn.click()
 
         WebDriverWait(driver, 5).until(
-            EC.invisibility_of_element_located((By.XPATH, "//button[contains(., '초기화 하기')]"))
+            EC.invisibility_of_element_located(
+                (By.XPATH, "//button[contains(., '초기화 하기')]")
+            )
         )
-
-    except:
+    except Exception:
+        # 초기화 버튼이 없는 경우 그대로 진행
         pass
 
+
+# =========================
+# 세부 특기사항 생성 후 학생 이름 입력 화면으로 정상 진입하는지 검증
+# =========================
+def test_spec_create(logged_in_driver):
+    driver = logged_in_driver
+
+    # ==========
+    # Arrange
+    # ==========
+    # 도구 메뉴에서 세부 특기사항 페이지로 진입
+    _click(driver, By.XPATH, "//span[text()='도구']")
+    _click(driver, By.XPATH, "//p[text()='세부 특기사항']")
+
+    # 기존 입력 내역이 있으면 초기화
+    _reset_input_history_if_exists(driver)
+
     # 학교급 선택
-    click(driver, By.XPATH, "//label[text()='학교급']/following::div[1]")
-    click(driver, By.XPATH, "//li[normalize-space()='고등학교']")
+    _click(driver, By.XPATH, "//label[text()='학교급']/following::div[1]")
+    _click(driver, By.XPATH, "//li[normalize-space()='고등학교']")
 
     # 학년 선택
-    click(driver, By.XPATH, "//label[text()='학년']/following::div[1]")
-    click(driver, By.XPATH, "//li[normalize-space()='3학년']")
+    _click(driver, By.XPATH, "//label[text()='학년']/following::div[1]")
+    _click(driver, By.XPATH, "//li[normalize-space()='3학년']")
 
     # 과목 입력 및 선택
-    type_text(
+    _type_text(
         driver,
         By.XPATH,
         "//input[@placeholder='과목을 선택해주세요. (직접 입력 가능)']",
-        SUBJECT_INPUT
+        SUBJECT_INPUT,
     )
-    click(driver, By.XPATH, "//li[normalize-space()='국어']")
+    _click(driver, By.XPATH, "//li[normalize-space()='국어']")
 
     # 단원 입력
-    type_text(
+    _type_text(
         driver,
         By.XPATH,
         "//input[@placeholder='수업 단원을 입력해주세요.']",
-        UNIT_INPUT
+        UNIT_INPUT,
     )
 
-    # =========================
-    # Act (실행)
-    # =========================
+    # ==========
+    # Act
+    # ==========
+    # 다음으로 버튼을 클릭
+    _click(
+        driver,
+        By.XPATH,
+        "//button[@type='submit' and contains(., '다음으로')]",
+    )
 
-    # 다음으로 버튼 클릭 (type='submit' 포함하여 더 정확하게 선택)
-    click(driver, By.XPATH, "//button[@type='submit' and contains(., '다음으로')]")
+    # 학생 이름 입력 화면이 나타날 때까지 대기
+    name_input_area = _find(driver, By.XPATH, "//p[text()='이름을 입력해주세요.']")
 
-    # 결과 화면(학생 이름 입력 단계) 로딩 대기
-    name_input_area = find(driver, By.XPATH, "//p[text()='이름을 입력해주세요.']")
-
-    # 스크린샷 저장 (디버깅용)
+    # 디버깅용 스크린샷 저장
     driver.save_screenshot("result.png")
     print("스크린샷 저장 완료 (result.png)")
 
-    # =========================
-    # Assert (검증)
-    # =========================
-
-    # 1. 학생 이름 입력 화면 진입 여부 확인
+    # ==========
+    # Assert
+    # ==========
+    # 학생 이름 입력 화면이 정상적으로 표시되는지 확인
     assert name_input_area.is_displayed(), NAME_INPUT_AREA_NOT_DISPLAYED
 
-    # 2. 이전 단계 입력값 저장/노출 여부 확인
-    assert find(driver, By.XPATH, "//h6[normalize-space()='고등학교']").is_displayed(), SCHOOL_LEVEL_NOT_SAVED
-    assert find(driver, By.XPATH, "//h6[normalize-space()='3학년']").is_displayed(), GRADE_NOT_SAVED
-    assert find(driver, By.XPATH, "//h6[normalize-space()='국어']").is_displayed(), SUBJECT_NOT_SAVED
-    assert find(driver, By.XPATH, "//h6[normalize-space()='1단원 : 문학작품감상']").is_displayed(), UNIT_NOT_SAVED
+    # 이전 단계에서 입력한 값이 정상적으로 유지되는지 확인
+    assert _find(driver, By.XPATH, "//h6[normalize-space()='고등학교']").is_displayed(), SCHOOL_LEVEL_NOT_SAVED
+    assert _find(driver, By.XPATH, "//h6[normalize-space()='3학년']").is_displayed(), GRADE_NOT_SAVED
+    assert _find(driver, By.XPATH, "//h6[normalize-space()='국어']").is_displayed(), SUBJECT_NOT_SAVED
+    assert _find(driver, By.XPATH, "//h6[normalize-space()='1단원 : 문학작품감상']").is_displayed(), UNIT_NOT_SAVED
