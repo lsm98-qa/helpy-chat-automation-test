@@ -1,4 +1,4 @@
-﻿from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support import expected_conditions as EC
 
 from locators.auth_locators import PROFILE_AVATAR
 
@@ -8,17 +8,28 @@ def _is_chat_home(driver, base_url):
     return "/ai-helpy-chat" in driver.current_url.lower() and base_url.lower() in driver.current_url.lower()
 
 
-# 정상 로그인 후 메인 화면 진입과 사용자 아바타 노출을 검증한다.
+# =========================
+# 정상 로그인 성공 상태 노출 검증
+# =========================
 def test_login_success(logged_in_driver, wait, base_url):
-    """정상 로그인 시 메인 페이지로 이동하는지 검증한다."""
-
+    # ==========
     # Arrange
+    # ==========
     driver = logged_in_driver
 
+    # ==========
     # Act
+    # ==========
+    # 메인 홈 진입과 아바타 노출까지 대기
     wait.until(lambda d: _is_chat_home(d, base_url))
     wait.until(EC.presence_of_element_located(PROFILE_AVATAR))
 
+    # ==========
     # Assert
-    assert _is_chat_home(driver, base_url), f"로그인 후 메인 페이지로 이동하지 않았습니다: {driver.current_url}"
-    assert driver.find_elements(*PROFILE_AVATAR), "로그인 후 프로필 아바타가 보이지 않습니다."
+    # ==========
+    has_profile_avatar = bool(driver.find_elements(*PROFILE_AVATAR))
+    assert _is_chat_home(driver, base_url) and has_profile_avatar, (
+        f"로그인 성공 상태 검증에 실패했습니다. "
+        f"current_url={driver.current_url}, "
+        f"has_profile_avatar={has_profile_avatar}"
+    )

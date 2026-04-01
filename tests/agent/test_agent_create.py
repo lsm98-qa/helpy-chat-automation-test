@@ -1,4 +1,4 @@
-﻿import pytest
+import pytest
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 
@@ -146,6 +146,7 @@ def test_agent_create_tabs_initial_state(navigate_to_agent_create, wait):
     chat_tab = wait.until(EC.element_to_be_clickable(AGENT_CREATE_CHAT_TAB))
     settings_tab = wait.until(EC.element_to_be_clickable(AGENT_CREATE_FORM_TAB))
 
+    # ==========
     # Assert
     assert group.is_displayed(), "대화/설정 토글 그룹이 화면에 표시되지 않았습니다."
     assert chat_tab.is_displayed() and chat_tab.is_enabled(), "chat 탭이 표시/활성 상태가 아닙니다."

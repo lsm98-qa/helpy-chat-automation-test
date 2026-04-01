@@ -6,9 +6,12 @@ from locators.menu_locators import MENU_AGENT_EXPLORE
 
 # 에이전트 탐색 페이지로 정상 진입되는지 확인
 def test_navigate_to_agent_explore(navigate_to_agent_explore, wait):
+    # ==========
     # Arrange
+    # ==========
     driver = navigate_to_agent_explore
 
+    # ==========
     # Act
     wait.until(EC.presence_of_element_located(MENU_AGENT_EXPLORE))
 
@@ -44,5 +47,6 @@ def test_navigate_back_to_agent_explore_from_agent_create(navigate_to_agent_expl
     wait.until(EC.url_contains("/ai-helpy-chat/agents"))
     wait.until(EC.presence_of_element_located(MENU_AGENT_EXPLORE))
 
+    # ==========
     # Assert
     assert "/builder" not in driver.current_url
