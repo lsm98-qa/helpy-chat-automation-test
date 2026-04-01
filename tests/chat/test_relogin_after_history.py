@@ -1,4 +1,4 @@
-import os
+﻿import os
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
@@ -8,28 +8,37 @@ from pages.account_menu import AccountMenu
 from pages.chat_actions import click_new_chat, send_chat_message
 
 
+# =========================
+# 대화 생성 후 재로그인 시 메시지가 유지되는 지 검증
+# =========================
 def test_chat_persistence_after_relogin(logged_in_driver, wait):
     #==========
     # Arrange
     #==========
+    # 로그인
     driver = logged_in_driver
     account_menu = AccountMenu(driver, wait)
+
+    # 새 대화 시작
     click_new_chat(wait)
 
     #==========
     # Act
     #==========
+    # 현재 응답 메시지 개수 확인
     AI_MESSAGE_TEXTS = (By.CSS_SELECTOR, "div[data-status='complete'].elice-aichat__markdown p")
     first_chat = "안녕하세요"
     before_count = len(driver.find_elements(*AI_MESSAGE_TEXTS))
+
+    # 대화 전송
     send_chat_message(wait, first_chat)
 
+    # AI 응답 대기
     wait.until(lambda d: len(d.find_elements(*AI_MESSAGE_TEXTS)) > before_count)
 
-    # 로그아웃 직전 마지막 응답
+    # 마지막 응답 저장 후 로그아웃
     before_logout = driver.find_elements(*AI_MESSAGE_TEXTS)[-1].text
 
-    # 로그아웃
     account_menu.logout()
 
     # 재로그인
@@ -42,6 +51,7 @@ def test_chat_persistence_after_relogin(logged_in_driver, wait):
     #==========
     # Assert
     #==========
+    # 재로그인 후 마지막 메시지가 유지되는지 확인
     wait.until(EC.presence_of_element_located((By.NAME, "input")))
     wait.until(lambda d: len(d.find_elements(*AI_MESSAGE_TEXTS)) > 0)
     after_relogin = driver.find_elements(*AI_MESSAGE_TEXTS)[-1].text
