@@ -1,4 +1,4 @@
-﻿import os
+import os
 import time
 import uuid
 
@@ -155,6 +155,9 @@ def _submit_and_observe(driver, wait, email, password):
         ),
     ],
 )
+# =========================
+# 비정상 입력 클라이언트 검증 메시지 노출 검증
+# =========================
 def test_login_negative_client_side_validation(
     driver,
     wait,
@@ -166,9 +169,15 @@ def test_login_negative_client_side_validation(
     allow_html5_email_msg,
     allow_html5_password_msg,
 ):
-    """이메일 형식/공백/특수문자 입력 시 로그인 실패 및 에러 안내를 검증한다."""
-
+    # ==========
+    # Arrange
+    # ==========
     _open_login_page(driver, wait, login_url)
+
+    # ==========
+    # Act
+    # ==========
+    # 비정상 입력으로 로그인 시도 후 관찰값 수집
     observed = _submit_and_observe(driver, wait, email=email, password=password)
     _assert_failed_login_without_stuck_ui(driver, wait, base_url)
 
@@ -176,6 +185,9 @@ def test_login_negative_client_side_validation(
     has_html5_email_error = allow_html5_email_msg and bool(observed["email_validation_message"])
     has_html5_password_error = allow_html5_password_msg and bool(observed["password_validation_message"])
 
+    # ==========
+    # Assert
+    # ==========
     assert has_text_error or has_html5_email_error or has_html5_password_error, (
         "클라이언트 입력 검증 에러 메시지를 확인하지 못했습니다. "
         f"errors={observed['errors']}, "
@@ -184,39 +196,57 @@ def test_login_negative_client_side_validation(
     )
 
 
+# =========================
+# 미존재 계정 로그인 실패 메시지 노출 검증
+# =========================
 def test_login_negative_non_existing_account(driver, wait, base_url, login_url):
-    """존재하지 않는 계정으로 로그인 시 실패하고 계정 없음/인증 실패 메시지를 노출하는지 검증한다."""
-
+    # ==========
+    # Arrange
+    # ==========
     _open_login_page(driver, wait, login_url)
     non_existing_email = f"autotest-non-existing-{uuid.uuid4().hex[:10]}@example.invalid"
+
+    # ==========
+    # Act
+    # ==========
+    # 존재하지 않는 계정으로 로그인 시도
     observed = _submit_and_observe(driver, wait, email=non_existing_email, password="AnyWrongPass123!")
     _assert_failed_login_without_stuck_ui(driver, wait, base_url)
 
-    # 임시로 시스템 오류 문구도 허용하되, 기본 기대값은 인증 실패 문구.
+    # ==========
+    # Assert
+    # ==========
     has_invalid_credentials = _contains_message(observed["errors"], INVALID_CREDENTIALS_MESSAGE)
     has_temp_system_error = _contains_message(observed["errors"], TEMP_SYSTEM_ERROR_MESSAGE)
-
     assert has_invalid_credentials or has_temp_system_error, (
         "존재하지 않는 계정 시 기대 메시지(인증 실패/임시 시스템 오류)를 찾지 못했습니다. "
         f"errors={observed['errors']}"
     )
 
 
+# =========================
+# 정상 이메일 + 오입력 비밀번호 실패 메시지 검증
+# =========================
 def test_login_negative_wrong_password(driver, wait, base_url, login_url):
-    """정상 이메일 + 틀린 비밀번호 조합에서 로그인 실패 및 비밀번호/인증 실패 메시지를 검증한다."""
-
+    # ==========
+    # Arrange
+    # ==========
     account_email = os.getenv("ACCOUNT_EMAIL")
     if not account_email:
         pytest.skip("ACCOUNT_EMAIL 환경변수가 없어 정상 이메일 + 틀린 비밀번호 시나리오를 건너뜁니다.")
-
     _open_login_page(driver, wait, login_url)
+
+    # ==========
+    # Act
+    # ==========
+    # 정상 이메일과 틀린 비밀번호 조합으로 로그인 시도
     observed = _submit_and_observe(driver, wait, email=account_email, password="WrongPassword!234")
     _assert_failed_login_without_stuck_ui(driver, wait, base_url)
 
+    # ==========
+    # Assert
+    # ==========
     assert _contains_message(observed["errors"], INVALID_CREDENTIALS_MESSAGE), (
         "비밀번호 불일치/인증 실패 메시지를 찾지 못했습니다. "
         f"errors={observed['errors']}"
     )
-
-
-
