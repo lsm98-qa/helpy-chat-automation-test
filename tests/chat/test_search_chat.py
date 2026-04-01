@@ -20,13 +20,21 @@ def test_search_chat_and_open_chat_matches_title(logged_in_driver, wait):
     #==========
     click_search_menu(wait)
 
-    keyword = "A"
+    keyword = "B"
 
     # 검색어 입력
     search_input = input_search_keyword(wait, keyword)
 
-    # 검색 결과 로드 대기
-    wait.until(lambda d: all(keyword in el.text for el in d.find_elements(By.CSS_SELECTOR, "div[role='dialog'] ul > li") if el.text.strip()))
+    keyword_lower = keyword.lower()
+
+    # 검색 결과 로드 대기 (대소문자 무시)
+    wait.until(
+        lambda d: all(
+            keyword_lower in el.text.lower()
+            for el in d.find_elements(By.CSS_SELECTOR, "div[role='dialog'] ul > li")
+            if el.text.strip()
+        )
+    )
 
     search_chat_titles = get_visible_search_result_titles(wait) # 검색 결과 제목 조회
 
@@ -34,9 +42,9 @@ def test_search_chat_and_open_chat_matches_title(logged_in_driver, wait):
     # Assert
     #==========
     # 검색어가 포함된 제목만 기대값으로 사용
-    expected = [t for t in all_chat_titles if keyword in t]
+    expected = [t for t in all_chat_titles if keyword_lower in t.lower()]
 
-    invalid_results = [t for t in expected if keyword not in t] # 검색어 미포함 결과
+    invalid_results = [t for t in expected if keyword_lower not in t.lower()] # 검색어 미포함 결과
     missing_results = [t for t in expected if t not in search_chat_titles] # 누락된 채팅 확인
 
     errors = []
@@ -55,7 +63,7 @@ def test_search_chat_and_open_chat_matches_title(logged_in_driver, wait):
         #==========
         # 최상단 검색 결과 제목 저장
         top_chat_title = wait.until(
-        lambda d: d.find_element(By.CSS_SELECTOR, "div[role='dialog'] ul > li span")
+            lambda d: d.find_element(By.CSS_SELECTOR, "div[role='dialog'] ul > li span")
         ).text.strip()
         
         # 최상단 검색 결과 클릭

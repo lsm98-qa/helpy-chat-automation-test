@@ -49,37 +49,41 @@ def get_top_chat_item_or_none(wait):
     except NoSuchElementException:
         return None
     
+
 # 채팅 기록 수집
 def get_all_chat_titles(wait):
     driver = wait._driver
     scroller = driver.find_element(By.CSS_SELECTOR, "div[data-testid='virtuoso-scroller']")
     titles = []
 
-    while True:
-        # StaleElement 예외가 발생할 수 있어 최대 3번까지 재시도
-        for _ in range(3):
-            try:
-                visible_titles = [
-                    el.text.strip()
-                    for el in driver.find_elements(By.CSS_SELECTOR, "a[data-index] span")
-                    if el.text.strip()
-                ]
-                break
-            except StaleElementReferenceException:
-                continue
-        else:
-            raise AssertionError("채팅 목록 조회 중 오류가 발생했습니다.")
+    # 이미 추가한 채팅 링크 저장하여 중복 제외
+    seen = set()
 
-        # 현재 화면에 보이는 채팅 제목을 누적
-        titles.extend(visible_titles)
+    while True:
+        try:
+            # 현재 화면에 보이는 채팅 항목 수집
+            chat_items = driver.find_elements(By.CSS_SELECTOR, "a[data-index]")
+
+            for item in chat_items:
+                # 채팅 제목과 링크 가져오기
+                title = item.text.strip()
+                link = item.get_attribute("href")
+
+                # 제목이 있고, 아직 저장하지 않은 채팅이면 목록에 추가
+                if title and link and link not in seen:
+                    seen.add(link)
+                    titles.append(title)
+
+        except StaleElementReferenceException:
+            continue
 
         prev_scroll = driver.execute_script("return arguments[0].scrollTop", scroller)
         driver.execute_script("arguments[0].scrollTop += arguments[0].clientHeight", scroller)
         curr_scroll = driver.execute_script("return arguments[0].scrollTop", scroller)
 
-        # 더 이상 스크롤되지 않으면 종료
+        # 더 이상 스크롤 할 공간이 없다면 종료료
         if curr_scroll == prev_scroll:
-            break    
+            break
 
     return titles
 
