@@ -54,6 +54,11 @@ def get_top_chat_item_or_none(wait):
 def get_all_chat_titles(wait):
     driver = wait._driver
     scroller = driver.find_element(By.CSS_SELECTOR, "div[data-testid='virtuoso-scroller']")
+
+    # 채팅 스크롤 위치 초기화 하고 시작
+    driver.execute_script("arguments[0].scrollTop = 0", scroller)
+    wait.until(lambda d: d.execute_script("return arguments[0].scrollTop", scroller) == 0)
+    
     titles = []
 
     # 이미 추가한 채팅 링크 저장하여 중복 제외
