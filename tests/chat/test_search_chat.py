@@ -1,11 +1,18 @@
 ﻿from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from pages.chat_actions import click_search_menu, get_all_chat_titles, input_search_keyword, get_visible_search_result_titles
+from tests.chat.constants import SEARCH_KEYWORD_TEST_CASES
+import pytest
+
+@pytest.mark.parametrize(
+    "keyword, search_case",
+    SEARCH_KEYWORD_TEST_CASES
+)
 
 # =========================
 # 검색어에 맞게 올바르게 검색 값이 나오는 지, 클릭한 채팅으로 정상 진입 되는 지 검증
 # =========================
-def test_search_chat_and_open_chat_matches_title(logged_in_driver, wait):
+def test_search_chat_and_open_chat_matches_title(logged_in_driver, wait, keyword, search_case):
     #==========
     # Arrange
     #==========
@@ -21,8 +28,6 @@ def test_search_chat_and_open_chat_matches_title(logged_in_driver, wait):
     # Act
     #==========
     click_search_menu(wait)
-
-    keyword = " "
 
     # 검색어 입력
     search_input = input_search_keyword(wait, keyword)
@@ -59,19 +64,26 @@ def test_search_chat_and_open_chat_matches_title(logged_in_driver, wait):
 
     search_chat_titles = get_visible_search_result_titles(wait) # 검색 결과 제목 조회
     
-    invalid_results = [t for t in search_chat_titles if keyword_lower not in (t or "").lower()] # 검색어 미포함 결과
-    missing_results = [t for t in expected if t not in search_chat_titles] # 누락된 채팅 확인
+    # before : 검색 창에 채팅이 20개까지만 조회되어 21개 부터는 검증 실패
+    # after : 기대 결과가 20개 초과일 때는 리스트 앞 20개까지 비교하여 일치하면 pass
 
-    
-    errors = []
+    if len(expected) > 20 :
+        assert expected[:20] == search_chat_titles[:20], (f"[{search_case}] 검색 결과가 기대 결과와 일치하지 않습니다.")
 
-    if invalid_results:
-        errors.append(f"검색어 '{keyword}'가 포함되지 않은 결과가 있습니다.: {invalid_results}")
+    else : 
+        invalid_results = [t for t in search_chat_titles if keyword_lower not in (t or "").lower()] # 검색어 미포함 결과
+        missing_results = [t for t in expected if t not in search_chat_titles] # 누락된 채팅 확인
 
-    if missing_results:
-        errors.append(f"누락된 결과가 있습니다.: {missing_results}")
+        
+        errors = []
 
-    assert not errors, "\n".join(errors)
+        if invalid_results:
+            errors.append(f"[{search_case}] 검색어 '{keyword}'가 포함되지 않은 결과가 있습니다.: {invalid_results}")
+
+        if missing_results:
+            errors.append(f"[{search_case}] 누락된 결과가 있습니다.: {missing_results}")
+
+        assert not errors, "\n".join(errors)
 
     if search_chat_titles:
         #==========
@@ -116,4 +128,4 @@ def test_search_chat_and_open_chat_matches_title(logged_in_driver, wait):
         )
 
         name_input_value = name_input_box.get_attribute("value")
-        assert name_input_value == top_chat_title, "선택한 채팅과 이름이 일치하지 않습니다."
+        assert name_input_value == top_chat_title, f"[{search_case}] 선택한 채팅과 이름이 일치하지 않습니다."
