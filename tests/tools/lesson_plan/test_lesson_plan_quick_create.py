@@ -1,4 +1,5 @@
-from selenium.common.exceptions import TimeoutException
+import time
+
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
@@ -54,33 +55,49 @@ def _type_text(driver, by, value, text, timeout=10):
 
 
 # 드롭다운에서 원하는 옵션을 선택하고 반영 여부까지 확인하는 헬퍼
-def _select_dropdown_option(driver, label_text, option_text):
-    dropdown = WebDriverWait(driver, 10).until(
-        EC.element_to_be_clickable((
-            By.XPATH,
-            f"//label[contains(text(),'{label_text}')]/following::div[@role='combobox'][1]",
-        ))
+def _select_dropdown_option(driver, label_text, option_text, timeout=15):
+    dropdown_locator = (
+        By.XPATH,
+        f"//label[contains(text(),'{label_text}')]/following::div[@role='combobox'][1]",
+    )
+    option_locator = (
+        By.XPATH,
+        f"//ul[@role='listbox']//li[normalize-space()='{option_text}']",
+    )
+
+    dropdown = WebDriverWait(driver, timeout).until(
+        EC.element_to_be_clickable(dropdown_locator)
     )
     dropdown.click()
 
-    option = WebDriverWait(driver, 10).until(
-        EC.element_to_be_clickable((
-            By.XPATH,
-            f"//ul[@role='listbox']//li[normalize-space()='{option_text}']",
-        ))
+    option = WebDriverWait(driver, timeout).until(
+        EC.element_to_be_clickable(option_locator)
     )
     option.click()
 
-    WebDriverWait(driver, 10).until(
-        lambda d: option_text in d.find_element(
-            By.XPATH,
-            f"//label[contains(text(),'{label_text}')]/following::div[@role='combobox'][1]",
-        ).text
+    # 드롭다운 목록이 닫힐 때까지 대기
+    WebDriverWait(driver, timeout).until(
+        EC.invisibility_of_element_located(option_locator)
+    )
+
+    # 선택값이 실제로 반영될 때까지 대기
+    WebDriverWait(driver, timeout).until(
+        lambda d: option_text in d.find_element(*dropdown_locator).get_attribute("textContent")
+    )
+
+
+# 생성 완료 체크 아이콘이 표시될 때까지 기다리는 헬퍼
+def _wait_for_success_check_icon(driver, timeout=30):
+    return WebDriverWait(driver, timeout).until(
+        EC.visibility_of_element_located((
+            By.CSS_SELECTOR,
+            "svg[data-testid='circle-checkIcon']",
+        ))
     )
 
 
 # =========================
-# 수업지도안에서 빠른 생성 선택 후 로딩 아이콘이 사라지며 생성이 완료되는지 검증
+# 수업지도안에서 빠른 생성 선택 후 생성이 완료되는지 검증
 # =========================
 def test_lesson_plan_quick_create(logged_in_driver):
     driver = logged_in_driver
@@ -104,7 +121,7 @@ def test_lesson_plan_quick_create(logged_in_driver):
     # 과목 선택
     _select_dropdown_option(driver, "과목", "국어")
 
-    # 교육 내용(주제·단원명) 입력
+    # 교육 내용 입력
     _type_text(
         driver,
         By.XPATH,
@@ -115,18 +132,18 @@ def test_lesson_plan_quick_create(logged_in_driver):
     # 수업 차시 선택
     _select_dropdown_option(driver, "수업 차시", "1")
 
-    # 생성 방식 영역까지 스크롤 후 빠른 생성 선택
+    # 생성 방식에서 빠른 생성 선택
     _scroll_and_click(driver, By.XPATH, "//*[contains(text(),'빠른 생성')]")
 
     # ==========
     # Act
     # ==========
-    # 생성 버튼 또는 다시 생성 버튼까지 스크롤 후 클릭
+    button_locator = (
+        By.XPATH,
+        "//button[normalize-space()='수업지도안 생성' or normalize-space()='다시 생성']",
+    )
     generate_button = WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((
-            By.XPATH,
-            "//button[normalize-space()='생성' or normalize-space()='다시 생성']",
-        ))
+        EC.presence_of_element_located(button_locator)
     )
 
     driver.execute_script(
@@ -154,16 +171,20 @@ def test_lesson_plan_quick_create(logged_in_driver):
     # ==========
     # Assert
     # ==========
-    # 로딩 아이콘이 표시되는지 확인
-    loading_locator = (
-        By.XPATH,
-        "//*[name()='svg' and contains(@class,'MuiCircularProgress-svg')]",
-    )
-    _find(driver, *loading_locator, timeout=20)
-
-    # 로딩 아이콘이 사라질 때까지 대기
-    WebDriverWait(driver, 180).until(
-        EC.invisibility_of_element_located(loading_locator)
+    # 생성 요청 후 버튼이 비활성화되는지 확인
+    WebDriverWait(driver, 10).until(
+        lambda d: not d.find_element(*button_locator).is_enabled()
     )
 
-    print("수업지도안 빠른 생성 완료!")
+    # 생성 완료 후 버튼이 다시 활성화되는지 확인
+    WebDriverWait(driver, 300).until(
+        lambda d: d.find_element(*button_locator).is_enabled()
+    )
+
+    # 완료 체크 아이콘이 표시되는지 확인
+    success_icon = _wait_for_success_check_icon(driver, timeout=30)
+
+    assert success_icon.is_displayed(), "수업지도안 생성 완료 체크 아이콘이 표시되지 않았습니다."
+
+    print("수업지도안이 생성 완료 하였습니다.")
+    time.sleep(5)
