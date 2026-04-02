@@ -71,11 +71,11 @@ def get_all_chat_titles(wait):
 
             for item in chat_items:
                 # 채팅 제목과 링크 가져오기
-                title = item.text.strip()
+                title = item.get_attribute("textContent")
                 link = item.get_attribute("href")
 
                 # 제목이 있고, 아직 저장하지 않은 채팅이면 목록에 추가
-                if title and link and link not in seen:
+                if link and link not in seen:
                     seen.add(link)
                     titles.append(title)
 
@@ -118,9 +118,8 @@ def get_visible_search_result_titles(wait):
 
     search_chat_titles = []
     for item in items:
-        # 비어 있지 않은 제목만 수집
-        text = item.text.strip()
-        if text:
+        text = item.get_attribute("textContent")
+        if text is not None:
             search_chat_titles.append(text)
 
     return search_chat_titles

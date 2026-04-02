@@ -16,39 +16,53 @@ def test_search_chat_and_open_chat_matches_title(logged_in_driver, wait):
     
     # 전체 채팅 제목 수집
     all_chat_titles = get_all_chat_titles(wait)
-    
+
     #==========
     # Act
     #==========
     click_search_menu(wait)
 
-    keyword = "B"
+    keyword = " "
 
     # 검색어 입력
     search_input = input_search_keyword(wait, keyword)
 
     keyword_lower = keyword.lower()
 
-    # 검색 결과 로드 대기 (대소문자 무시)
-    wait.until(
-        lambda d: all(
-            keyword_lower in el.text.lower()
-            for el in d.find_elements(By.CSS_SELECTOR, "div[role='dialog'] ul > li")
-            if el.text.strip()
-        )
-    )
-
-    search_chat_titles = get_visible_search_result_titles(wait) # 검색 결과 제목 조회
-
+    
     #==========
     # Assert
     #==========
     # 검색어가 포함된 제목만 기대값으로 사용
-    expected = [t for t in all_chat_titles if keyword_lower in t.lower()]
 
-    invalid_results = [t for t in expected if keyword_lower not in t.lower()] # 검색어 미포함 결과
+    if keyword.strip() == "":
+    # 검색어가 공백인 경우 NONE이 아닌 전체 타이틀 수집
+        expected = [
+            t for t in all_chat_titles
+            if t is not None and keyword in t
+        ]
+    else:
+        # 공백이 아닌 경우 대소문자 무시하고 타이틀 수집
+        expected = [
+            t for t in all_chat_titles
+            if t is not None and keyword.lower() in t.lower()
+        ]
+    
+    # 검색 결과에 기대값이 아닌 문자가 없을 때 까지 대기
+    wait.until(
+        lambda d: all(
+            (el.get_attribute("textContent") or "") in expected
+            for el in d.find_elements(By.CSS_SELECTOR, "div[role='dialog'] ul > li")
+        )
+    )
+
+
+    search_chat_titles = get_visible_search_result_titles(wait) # 검색 결과 제목 조회
+    
+    invalid_results = [t for t in search_chat_titles if keyword_lower not in (t or "").lower()] # 검색어 미포함 결과
     missing_results = [t for t in expected if t not in search_chat_titles] # 누락된 채팅 확인
 
+    
     errors = []
 
     if invalid_results:
@@ -66,7 +80,7 @@ def test_search_chat_and_open_chat_matches_title(logged_in_driver, wait):
         # 최상단 검색 결과 제목 저장
         top_chat_title = wait.until(
             lambda d: d.find_element(By.CSS_SELECTOR, "div[role='dialog'] ul > li span")
-        ).text.strip()
+        ).get_attribute("textContent")
         
         # 최상단 검색 결과 클릭
         first_item = wait.until(
