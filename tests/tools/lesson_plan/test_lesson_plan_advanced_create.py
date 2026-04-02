@@ -79,7 +79,7 @@ def _select_dropdown_option(driver, label_text, option_text):
 def _wait_until_generate_button_enabled(driver, timeout=180):
     button_locator = (
         By.XPATH,
-        "//button[normalize-space()='생성' or normalize-space()='다시 생성']",
+        "//button[normalize-space()='수업지도안 생성' or normalize-space()='다시 생성']",
     )
 
     WebDriverWait(driver, timeout).until(
@@ -131,10 +131,10 @@ def test_lesson_plan_detail_create(logged_in_driver):
     # ==========
     # Act
     # ==========
-    # 생성 버튼 또는 다시 생성 버튼까지 스크롤 후 클릭
+    # 수업지도안 생성 버튼 또는 다시 생성 버튼까지 스크롤 후 클릭
     button_locator = (
         By.XPATH,
-        "//button[normalize-space()='생성' or normalize-space()='다시 생성']",
+        "//button[normalize-space()='수업지도안 생성' or normalize-space()='다시 생성']",
     )
     generate_button = WebDriverWait(driver, 10).until(
         EC.presence_of_element_located(button_locator)
