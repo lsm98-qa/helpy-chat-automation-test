@@ -65,6 +65,20 @@ def _is_element_present(driver, by, value, timeout=5):
         return False
 
 
+# 이전 결과가 있으면 새 생성 이후 결과가 갱신될 때까지 기다리는 헬퍼
+def _wait_for_result_refresh(driver, timeout=30):
+    option_b_locator = (
+        By.XPATH,
+        "//div[contains(@class,'MuiPaper-root') and normalize-space()='B']",
+    )
+
+    # 이전 객관식 결과가 남아 있으면, 새 생성 시작 후 사라질 때까지 대기
+    if _is_element_present(driver, *option_b_locator, timeout=2):
+        WebDriverWait(driver, timeout).until(
+            EC.invisibility_of_element_located(option_b_locator)
+        )
+
+
 # 이전 생성 결과가 있으면 다시 생성 플로우로 새 결과를 만들고,
 # 없으면 자동 생성으로 새 결과를 시작하는 헬퍼
 def _generate_quiz_result(driver):
@@ -124,8 +138,8 @@ def test_quiz_create_short_answer(logged_in_driver):
     # ==========
     # Act
     # ==========
-    # 새 퀴즈 생성 결과를 강제로 생성
     _generate_quiz_result(driver)
+    _wait_for_result_refresh(driver)
 
     # ==========
     # Assert
