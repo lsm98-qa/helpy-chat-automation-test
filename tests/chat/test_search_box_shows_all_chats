@@ -1,6 +1,6 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
-from chat_actions import get_all_chat_titles, click_new_chat, send_chat_message
+from pages.chat_actions import click_search_menu, get_all_chat_titles, click_new_chat, send_chat_message, get_visible_search_result_titles
 import pytest
 
 # =========================
@@ -48,3 +48,20 @@ def test_search_box_shows_all_chats(logged_in_driver, wait):
         wait.until(
             lambda d: len(d.find_elements(*AI_MESSAGE_TEXTS)) > before_count
         )
+
+    # 반복 생성 완료 후 최종 채팅 목록 다시 수집
+    if created:
+        all_chat_titles = get_all_chat_titles(wait)
+    
+    
+    click_search_menu(wait)
+
+    #==========
+    # Assert
+    #==========
+    all_chat_titles_count = len(all_chat_titles)
+    # 검색 화면에 조회된 채팅 개수 확인
+    search_chat_count = len(get_visible_search_result_titles(wait))
+    print(search_chat_count, all_chat_titles_count)
+
+    assert all_chat_titles_count == search_chat_count, f"전체 채팅 개수({all_chat_titles_count})와 검색 창의 채팅 개수({search_chat_count})가 일치하지 않습니다."
