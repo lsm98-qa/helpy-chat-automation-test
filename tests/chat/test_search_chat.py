@@ -2,7 +2,9 @@
 from selenium.webdriver.support import expected_conditions as EC
 from pages.chat_actions import click_search_menu, get_all_chat_titles, input_search_keyword, get_visible_search_result_titles
 
-
+# =========================
+# 검색어에 맞게 올바르게 검색 값이 나오는 지, 클릭한 채팅으로 정상 진입 되는 지 검증
+# =========================
 def test_search_chat_and_open_chat_matches_title(logged_in_driver, wait):
     #==========
     # Arrange
