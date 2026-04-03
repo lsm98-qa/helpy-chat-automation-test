@@ -1,0 +1,7 @@
+TOPIC_INPUT_NOT_DISABLED = "주제 입력 필드가 비활성화되지 않았습니다."
+INSTRUCTIONS_INPUT_NOT_DISABLED = "지시 사항 입력 필드가 비활성화되지 않았습니다."
+SUBMIT_BUTTON_NOT_DISABLED = "생성 버튼이 비활성화되지 않았습니다."
+PROCESSING_STATE_NOT_DISPLAYED = "심층 조사 진행 상태 UI가 표시되지 않았습니다."
+RESEARCH_RESULT_NOT_CREATED = "심층 조사 결과가 생성되지 않았습니다."
+RESEARCH_RESULT_TOO_SHORT = "심층 조사 결과 길이가 너무 짧습니다."
+RESEARCH_RESULT_HAS_ERROR = "심층 조사 결과에 오류 메시지가 포함되어 있습니다."
