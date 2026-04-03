@@ -123,3 +123,42 @@ def get_visible_search_result_titles(wait):
             search_chat_titles.append(text)
 
     return search_chat_titles
+
+
+# 모델 메뉴 열기
+def _open_model_menu(wait):
+    # 모델 변경 버튼 클릭
+    wait.until(lambda d: d.find_elements(By.CSS_SELECTOR, "main button[type='button']"))[0].click()
+
+    # 메뉴 창 반환
+    return wait.until(
+        lambda d: d.find_elements(By.CSS_SELECTOR, "ul[role='menu'] [role='menuitem']")
+    )
+
+# 전환 가능한 모델 여부 확인 : 없을 시 모델 설정에서 활성화
+def ensure_other_model_or_enable_in_settings(wait):
+    
+    menu_items = _open_model_menu(wait)
+
+    # 메뉴가 2개(전환할 모델 없음)면 모델 설정으로 이동
+    if len(menu_items) == 2:
+        menu_items[1].click()
+        # 모델 활성화 버튼 클릭
+        checkboxes = wait.until(
+            EC.presence_of_all_elements_located((By.CSS_SELECTOR, "input[type='checkbox']"))
+        )
+        checkboxes[1].click()
+    else:
+        # 있으면 메뉴 밖 영역 클릭하여 메뉴 창 닫기기
+        wait.until(lambda d: d.find_element(By.TAG_NAME, "body")).click()
+        wait.until(
+            lambda d: len(d.find_elements(By.CSS_SELECTOR, "ul[role='menu'] [role='menuitem']")) == 0
+        )
+
+# 다른 모델로 전환
+def select_other_model(wait):  
+    menu_items = _open_model_menu(wait)
+    menu_items[1].click()
+    wait.until(
+        lambda d: len(d.find_elements(By.CSS_SELECTOR, "ul[role='menu'] [role='menuitem']")) == 0
+    )
