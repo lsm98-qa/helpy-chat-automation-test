@@ -1,14 +1,65 @@
-# 초기 프로젝트 세팅
-## `.env` 파일 생성
-1. 프로젝트 루트에 `.env` 파일 생성
-2. 아래 내용을 입력
+﻿# 초기 프로젝트 세팅
 
-``` ACCOUNT_EMAIL = "username@example.com" ```
+## 1) 사전 준비
 
-``` ACCOUNT_PASSWORD = "password123" ```
+- Python 3.10+ 권장
+- Google Chrome 설치
+- 테스트 계정 준비
 
-3. 저장 후 `conftest.py` 에서 사용처 확인
+## 2) 가상환경 생성 (Windows PowerShell)
 
-## pip install
-```pip install -r requirements.txt```
+```powershell
+py -3 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+```
 
+## 3) 의존성 설치
+
+```bash
+pip install -r requirements.txt
+```
+
+## 4) `.env` 파일 생성
+
+프로젝트 루트에 `.env` 파일을 만들고 아래 값을 입력하세요.
+
+```env
+ACCOUNT_EMAIL=your_account_email
+ACCOUNT_PASSWORD=your_account_password
+```
+
+`conftest.py`에서 `python-dotenv`로 환경변수를 로드합니다.
+
+## 5) 기본 실행 확인
+
+```bash
+pytest
+```
+
+기본 설정(`pytest.ini`)에 따라 아래가 자동 적용됩니다.
+
+- `--html=artifacts/reports/report.html --self-contained-html`
+- `-ra -rxX` (skip/xfail/xpass 요약 + xfail reason 출력)
+
+## 6) 자주 쓰는 실행 옵션
+
+기본 URL 변경:
+
+```bash
+pytest --base-url "https://qaproject.elice.io/ai-helpy-chat"
+```
+
+특정 영역만 실행:
+
+```bash
+pytest tests/auth
+pytest tests/chat
+pytest tests/agent
+pytest tests/tools
+```
+
+## 7) 산출물 경로
+
+- HTML 리포트: `artifacts/reports/report.html`
+- 테스트 로그: `artifacts/logs/pytest.log`
+- 실패 스크린샷: `artifacts/screenshots/`
