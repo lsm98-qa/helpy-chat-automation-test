@@ -1,12 +1,9 @@
-workflow:
-  rules:
-    - when: manual
-
 stages:
   - test
 
 e2e_pytest:
   stage: test
+  when: manual
   variables:
     PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
 
