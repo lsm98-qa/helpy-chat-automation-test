@@ -15,7 +15,7 @@ def test_chat_persistence_after_change_ai_model(logged_in_driver, wait):
     driver = logged_in_driver
 
     # 로그인 요소가 사라질 때까지 대기
-    wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "[data-testid='PersonIcon']")))
+    wait.until(EC.invisibility_of_element_located((By.NAME, "loginId")))
     
     # 전환 가능한 모델 여부 확인 : 없을 시 모델 설정에서 활성화
     ensure_other_model_or_enable_in_settings(wait)

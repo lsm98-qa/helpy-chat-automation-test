@@ -19,7 +19,8 @@ def test_search_chat_and_open_chat_matches_title(logged_in_driver, wait, keyword
     # 로그인
     logged_in_driver
 
-    wait.until(lambda d: len(d.find_elements(By.CSS_SELECTOR, "a[data-index]")) > 0) # 채팅 기록이 로드될 때까지 대기
+    # 로그인 요소가 사라질 때까지 대기
+    wait.until(EC.invisibility_of_element_located((By.NAME, "loginId")))
     
     # 전체 채팅 제목 수집
     all_chat_titles = get_all_chat_titles(wait)

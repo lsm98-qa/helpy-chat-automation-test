@@ -31,10 +31,20 @@ def test_new_chat_receives_expected_greeting_reply(logged_in_driver, wait, quest
     #==========
     # Assert
     #==========
+
+    
     # 내가 보낸 대화와 다른 내용의 응답이 있는지 / 응답 안에 기대 키워드가 하나 이상 포함되어 있는지 검증
+    AI_MESSAGE_TEXTS = (By.CSS_SELECTOR, "div[data-status='complete'].elice-aichat__markdown p")
+
+
     assert wait.until(
-        lambda d: any(
-            len(t) > 4 and t != question and any(keyword in t for keyword in expected_keywords)
-            for t in (p.text.strip() for p in d.find_element(By.TAG_NAME, "body").find_elements(By.TAG_NAME, "p"))
+    lambda d: any(
+        len(t) > 4
+        and t != question
+        and any(keyword in t for keyword in expected_keywords)
+        for t in (
+            el.text.strip()
+            for el in d.find_elements(*AI_MESSAGE_TEXTS)
+            )
         )
     ), f"질문 '{question}'에 대한 응답이 기대 키워드 {expected_keywords}를 포함하지 않습니다."

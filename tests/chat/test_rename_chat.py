@@ -58,11 +58,13 @@ def test_can_rename_top_chat_item(logged_in_driver, wait):
     #==========
     # Assert
     #==========
+    # 이름 변경 창 종료 대기
+    wait.until(EC.invisibility_of_element(input_box))
+    
     # 최상단 채팅 요소 가져오기
     chat_item = _get_top_chat_item(wait)
 
     # 변경된 채팅 이름 확인
-    wait.until(EC.invisibility_of_element(input_box)) # 이름 입력창 사라질 때 까지 대기
     assert new_name == chat_item.text.strip(), "입력한 이름과 변경된 이름이 일치하지 않습니다."
 
     
