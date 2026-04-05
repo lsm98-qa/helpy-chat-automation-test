@@ -1,5 +1,5 @@
 import pytest
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import StaleElementReferenceException, TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
@@ -29,16 +29,26 @@ def _go_to_my_agents(wait):
 
 # 내 에이전트 카드 리스트가 로드될 때까지 기다린 뒤 카드 목록을 반환한다.
 def _get_agent_items(driver, wait):
-    container = _wait_for_agent_list_container(driver, wait)
-    try:
-        wait.until(lambda d: len(container.find_elements(By.XPATH, AGENT_ITEMS_XPATH)) > 0)
-    except TimeoutException:
-        return []
-    return container.find_elements(By.XPATH, AGENT_ITEMS_XPATH)
+    last_error = None
+    for _ in range(5):
+        try:
+            container = _wait_for_agent_list_container(driver, wait)
+            try:
+                wait.until(lambda d: len(container.find_elements(By.XPATH, AGENT_ITEMS_XPATH)) > 0)
+            except TimeoutException:
+                return []
+            return container.find_elements(By.XPATH, AGENT_ITEMS_XPATH)
+        except StaleElementReferenceException as e:
+            last_error = e
+            continue
+
+    if last_error:
+        raise last_error
+    return []
 
 
 def _scroll_my_agents_list_one_page(driver, wait):
-    scroller = _wait_for_agent_list_scroller(wait)
+    scroller = _get_active_scroll_container(driver, wait)
     previous_scroll_top = driver.execute_script("return arguments[0].scrollTop;", scroller)
     driver.execute_script(
         "arguments[0].scrollTop = arguments[0].scrollTop + arguments[0].clientHeight;",
@@ -98,8 +108,11 @@ def _scroll_scroller_and_wait_update(driver, wait):
 def _find_agent_list_container_with_agents(driver):
     containers = driver.find_elements(*AGENT_LIST_CONTAINER)
     for container in containers:
-        if container.find_elements(By.CSS_SELECTOR, AGENT_CARD_LINK_SELECTOR):
-            return container
+        try:
+            if container.find_elements(By.CSS_SELECTOR, AGENT_CARD_LINK_SELECTOR):
+                return container
+        except StaleElementReferenceException:
+            continue
     return None
 
 
@@ -116,29 +129,39 @@ def _wait_for_agent_list_container(driver, wait):
 def _get_active_scroll_container(driver, wait):
     # 전역에서 첫 스크롤러를 고르면 사이드바가 잡힐 수 있으므로,
     # 리스트 자신의 조상 체인에서만 스크롤 컨테이너를 찾는다(=본문 영역 우선).
-    list_container = _wait_for_agent_list_container(driver, wait)
-    return driver.execute_script(
-        """
-        const list = arguments[0];
-        const hasScrollableY = (el) => {
-          if (!el) return false;
-          const style = getComputedStyle(el);
-          const oy = style.overflowY;
-          return (oy === 'auto' || oy === 'scroll') && (el.scrollHeight - el.clientHeight > 2);
-        };
+    last_error = None
+    for _ in range(5):
+        try:
+            list_container = _wait_for_agent_list_container(driver, wait)
+            return driver.execute_script(
+                """
+                const list = arguments[0];
+                const hasScrollableY = (el) => {
+                  if (!el) return false;
+                  const style = getComputedStyle(el);
+                  const oy = style.overflowY;
+                  return (oy === 'auto' || oy === 'scroll') && (el.scrollHeight - el.clientHeight > 2);
+                };
 
-        // list 자신/조상 중 실제 스크롤 가능한 가장 가까운 요소
-        let el = list;
-        while (el) {
-          if (hasScrollableY(el)) return el;
-          el = el.parentElement;
-        }
+                // list 자신/조상 중 실제 스크롤 가능한 가장 가까운 요소
+                let el = list;
+                while (el) {
+                  if (hasScrollableY(el)) return el;
+                  el = el.parentElement;
+                }
 
-        // fallback
-        return list;
-        """,
-        list_container,
-    )
+                // fallback
+                return list;
+                """,
+                list_container,
+            )
+        except StaleElementReferenceException as e:
+            last_error = e
+            continue
+
+    if last_error:
+        raise last_error
+    raise TimeoutException("활성 스크롤 컨테이너를 찾지 못했습니다.")
 
 
 # href에서 에이전트 ID를 추출한다.
@@ -290,8 +313,7 @@ def test_click_draft_agent_navigates_to_agent_edit_page(navigate_to_agent_explor
     driver = navigate_to_agent_explore
     _go_to_my_agents(wait)
 
-    agent_items = _get_agent_items(driver, wait)
-    draft_item, draft_meta = _find_first_agent_item_by_status(agent_items, "draft")
+    draft_item, draft_meta = _find_first_agent_item_by_status_with_scroll(driver, wait, "draft")
 
     if not draft_item or not draft_meta:
         pytest.skip("초안 상태 에이전트를 찾지 못했습니다.")
@@ -360,8 +382,7 @@ def test_agent_click_routing_differs_by_status(navigate_to_agent_explore, wait):
     driver = navigate_to_agent_explore
     _go_to_my_agents(wait)
 
-    agent_items = _get_agent_items(driver, wait)
-    draft_item, draft_meta = _find_first_agent_item_by_status(agent_items, "draft")
+    draft_item, draft_meta = _find_first_agent_item_by_status_with_scroll(driver, wait, "draft")
 
     if not draft_item or not draft_meta:
         pytest.skip("초안 상태 에이전트를 찾지 못했습니다.")
@@ -376,8 +397,7 @@ def test_agent_click_routing_differs_by_status(navigate_to_agent_explore, wait):
 
     _return_to_my_agents(driver, wait)
 
-    refreshed_items = _get_agent_items(driver, wait)
-    saved_item, saved_meta = _find_first_agent_item_by_status(refreshed_items, "saved")
+    saved_item, saved_meta = _find_first_agent_item_by_status_with_scroll(driver, wait, "saved")
 
     if not saved_item or not saved_meta:
         pytest.skip("저장 완료 상태 에이전트를 찾지 못했습니다.")

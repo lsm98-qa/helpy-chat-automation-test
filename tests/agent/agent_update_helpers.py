@@ -2,7 +2,7 @@ import time
 from typing import Optional, Tuple
 
 import pytest
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import StaleElementReferenceException, TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
@@ -13,7 +13,7 @@ from locators.agent_locators import AGENT_MY_AGENTS_BUTTON
 
 
 AGENT_LIST_CONTAINER = (By.XPATH, "//div[@data-testid='virtuoso-item-list']")
-AGENT_ITEMS_XPATH = "//div[@data-testid='virtuoso-item-list']/div[@data-item-index]"
+AGENT_ITEMS_XPATH = "./*[@data-item-index or @data-index]"
 AGENT_CARD_LINK_SELECTOR = "a[href*='/ai-helpy-chat/agents/']"
 AGENT_TITLE_IN_ITEM_XPATH = ".//p[contains(@class, 'MuiTypography-noWrap')]"
 DRAFT_CHIP_XPATH = ".//span[contains(@class,'MuiChip-label') and normalize-space()='초안']"
@@ -26,9 +26,67 @@ def go_to_my_agents(wait):
     wait.until(EC.url_contains("/ai-helpy-chat/agents/mine"))
 
 
+def _wait_for_agent_list_container(driver, wait):
+    wait.until(EC.presence_of_all_elements_located(AGENT_LIST_CONTAINER))
+    return wait.until(lambda d: _find_agent_list_container_with_agents(d))
+
+
+def _find_agent_list_container_with_agents(driver):
+    containers = driver.find_elements(*AGENT_LIST_CONTAINER)
+    for container in containers:
+        try:
+            if container.find_elements(By.CSS_SELECTOR, AGENT_CARD_LINK_SELECTOR):
+                return container
+        except StaleElementReferenceException:
+            continue
+    return None
+
+
+def _get_active_scroll_container(driver, wait):
+    last_error = None
+    for _ in range(5):
+        try:
+            list_container = _wait_for_agent_list_container(driver, wait)
+            return driver.execute_script(
+                """
+                const list = arguments[0];
+                const hasScrollableY = (el) => {
+                  if (!el) return false;
+                  const style = getComputedStyle(el);
+                  const oy = style.overflowY;
+                  return (oy === 'auto' || oy === 'scroll') && (el.scrollHeight - el.clientHeight > 2);
+                };
+                let el = list;
+                while (el) {
+                  if (hasScrollableY(el)) return el;
+                  el = el.parentElement;
+                }
+                return list;
+                """,
+                list_container,
+            )
+        except StaleElementReferenceException as e:
+            last_error = e
+            continue
+
+    if last_error:
+        raise last_error
+    raise TimeoutException("활성 스크롤 컨테이너를 찾지 못했습니다.")
+
+
 def get_agent_items(driver, wait):
-    wait.until(EC.presence_of_element_located(AGENT_LIST_CONTAINER))
-    return driver.find_elements(By.XPATH, AGENT_ITEMS_XPATH)
+    last_error = None
+    for _ in range(5):
+        try:
+            container = _wait_for_agent_list_container(driver, wait)
+            return container.find_elements(By.XPATH, AGENT_ITEMS_XPATH)
+        except StaleElementReferenceException as e:
+            last_error = e
+            continue
+
+    if last_error:
+        raise last_error
+    return []
 
 
 def extract_agent_id_from_href(href: str) -> Optional[str]:
@@ -75,12 +133,57 @@ def find_first_saved_agent_item_with_edit(agent_items):
     return None, None, None
 
 
+def find_first_saved_agent_item_with_edit_with_scroll(driver, wait, max_scroll_pages=60):
+    scroller = _get_active_scroll_container(driver, wait)
+    driver.execute_script("arguments[0].scrollTop = 0;", scroller)
+
+    previous_scroll_top = -1
+    for _ in range(max_scroll_pages):
+        agent_items = get_agent_items(driver, wait)
+        target_item, target_meta, target_edit_button = find_first_saved_agent_item_with_edit(agent_items)
+        if target_item and target_meta and target_edit_button:
+            return target_item, target_meta, target_edit_button
+
+        driver.execute_script(
+            "arguments[0].scrollTop = arguments[0].scrollTop + Math.max(arguments[0].clientHeight * 0.9, 240);",
+            scroller,
+        )
+        try:
+            wait.until(
+                lambda d: d.execute_script("return arguments[0].scrollTop;", scroller) > previous_scroll_top
+                or d.execute_script(
+                    "return arguments[0].scrollTop + arguments[0].clientHeight >= arguments[0].scrollHeight - 2;",
+                    scroller,
+                )
+            )
+        except TimeoutException:
+            pass
+
+        current_scroll_top = driver.execute_script("return arguments[0].scrollTop;", scroller)
+        reached_bottom = driver.execute_script(
+            "return arguments[0].scrollTop + arguments[0].clientHeight >= arguments[0].scrollHeight - 2;",
+            scroller,
+        )
+        if reached_bottom or current_scroll_top <= previous_scroll_top:
+            break
+        previous_scroll_top = current_scroll_top
+
+    return None, None, None
+
+
 def open_saved_agent_builder(driver, wait) -> Tuple[str, str]:
     go_to_my_agents(wait)
-    agent_items = get_agent_items(driver, wait)
-    target_item, target_meta, target_edit_button = find_first_saved_agent_item_with_edit(agent_items)
+    target_item, target_meta, target_edit_button = find_first_saved_agent_item_with_edit_with_scroll(driver, wait)
 
     if not target_item or not target_meta or not target_edit_button:
+        current_url = driver.current_url
+        visible_items = len(get_agent_items(driver, wait))
+        print(
+            "[debug][skip] open_saved_agent_builder: "
+            f"target_item={bool(target_item)}, target_meta={bool(target_meta)}, "
+            f"target_edit_button={bool(target_edit_button)}, visible_items={visible_items}, "
+            f"current_url={current_url}"
+        )
         pytest.skip("수정 가능한 게시 에이전트 카드를 찾지 못했습니다.")
 
     wait.until(EC.element_to_be_clickable(target_edit_button)).click()
@@ -117,10 +220,14 @@ def update_agent_name(wait, new_name: str):
 
     name_input.send_keys(new_name)
     name_input.send_keys(Keys.TAB)
+    name_input.send_keys(Keys.ESCAPE)
+
+    time.sleep(0.5)
     wait.until(lambda d: (name_input.get_attribute("value") or "") == new_name)
 
 
 def click_save(wait):
+    driver = wait._driver
     save_button_xpath = (
         "//button["
         "normalize-space()='저장' "
@@ -131,16 +238,84 @@ def click_save(wait):
         "]"
     )
 
+    def _is_actionable_button(btn):
+        try:
+            if not btn.is_enabled():
+                return False
+            rendered = driver.execute_script(
+                """
+                const el = arguments[0];
+                if (!el) return false;
+                const style = getComputedStyle(el);
+                const rect = el.getBoundingClientRect();
+                return style.display !== 'none' &&
+                       style.visibility !== 'hidden' &&
+                       rect.width > 0 &&
+                       rect.height > 0 &&
+                       style.pointerEvents !== 'none';
+                """,
+                btn,
+            )
+            return bool(rendered)
+        except Exception:
+            return False
+
     try:
         wait.until(EC.presence_of_element_located((By.XPATH, save_button_xpath)))
-        buttons = wait.until(lambda d: d.find_elements(By.XPATH, save_button_xpath))
+        # 입력 반영/검증으로 버튼 활성화가 지연될 수 있어 추가 대기
+        try:
+            WebDriverWait(driver, 10).until(
+                lambda d: any(_is_actionable_button(btn) for btn in d.find_elements(By.XPATH, save_button_xpath))
+            )
+        except TimeoutException:
+            pass
+
+        buttons = driver.find_elements(By.XPATH, save_button_xpath)
         for button in buttons:
-            if button.is_displayed() and button.is_enabled():
-                button.click()
+            try:
+                driver.execute_script(
+                    "arguments[0].scrollIntoView({block: 'center', inline: 'nearest'});",
+                    button,
+                )
+                if not _is_actionable_button(button):
+                    continue
+
+                try:
+                    button.click()
+                except Exception:
+                    driver.execute_script("arguments[0].click();", button)
+
                 _submit_publish_setting_modal_if_present(wait)
                 return
+            except StaleElementReferenceException:
+                continue
     except TimeoutException:
         pass
+
+    try:
+        debug_buttons = driver.find_elements(By.XPATH, save_button_xpath)
+        debug_states = []
+        for btn in debug_buttons:
+            try:
+                debug_states.append(
+                    {
+                        "text": (btn.text or "").strip(),
+                        "enabled": btn.is_enabled(),
+                        "displayed": btn.is_displayed(),
+                        "type": btn.get_attribute("type"),
+                        "disabled_attr": btn.get_attribute("disabled"),
+                        "aria_disabled": btn.get_attribute("aria-disabled"),
+                    }
+                )
+            except Exception:
+                debug_states.append({"state_error": True})
+        print(
+            "[debug][skip] click_save: "
+            f"candidates={len(debug_buttons)}, states={debug_states}, "
+            f"current_url={driver.current_url}"
+        )
+    except Exception as e:
+        print(f"[debug][skip] click_save: debug collection failed: {e}")
 
     pytest.skip("저장 버튼을 찾지 못해 수정 검증을 진행할 수 없습니다.")
 
@@ -212,12 +387,43 @@ def wait_until_name_value(wait, expected_name: str):
 
 def find_agent_card_by_id(driver, wait, agent_id: str):
     css = f"a[href*='/ai-helpy-chat/agents/{agent_id}']"
-    _scroll_my_agents_list_to_top(driver)
-    wait.until(lambda d: len(d.find_elements(By.CSS_SELECTOR, css)) > 0)
-    matched_links = driver.find_elements(By.CSS_SELECTOR, css)
-    card_link = matched_links[0]
-    item = card_link.find_element(By.XPATH, "./ancestor::div[@data-item-index][1]")
-    return item
+    scroller = _get_active_scroll_container(driver, wait)
+    container = _wait_for_agent_list_container(driver, wait)
+    driver.execute_script("arguments[0].scrollTop = 0;", scroller)
+
+    previous_scroll_top = -1
+    for _ in range(80):
+        matched_links = container.find_elements(By.CSS_SELECTOR, css)
+        if matched_links:
+            card_link = matched_links[0]
+            item = card_link.find_element(By.XPATH, "./ancestor::*[@data-item-index or @data-index][1]")
+            return item
+
+        driver.execute_script(
+            "arguments[0].scrollTop = arguments[0].scrollTop + Math.max(arguments[0].clientHeight * 0.9, 240);",
+            scroller,
+        )
+        try:
+            wait.until(
+                lambda d: d.execute_script("return arguments[0].scrollTop;", scroller) > previous_scroll_top
+                or d.execute_script(
+                    "return arguments[0].scrollTop + arguments[0].clientHeight >= arguments[0].scrollHeight - 2;",
+                    scroller,
+                )
+            )
+        except TimeoutException:
+            pass
+
+        current_scroll_top = driver.execute_script("return arguments[0].scrollTop;", scroller)
+        reached_bottom = driver.execute_script(
+            "return arguments[0].scrollTop + arguments[0].clientHeight >= arguments[0].scrollHeight - 2;",
+            scroller,
+        )
+        if reached_bottom or current_scroll_top <= previous_scroll_top:
+            break
+        previous_scroll_top = current_scroll_top
+
+    pytest.fail(f"대상 에이전트 카드를 찾지 못했습니다. agent_id={agent_id}, current_url={driver.current_url}")
 
 
 def return_to_my_agents_from_builder(driver, wait):
@@ -228,16 +434,41 @@ def return_to_my_agents_from_builder(driver, wait):
 
 
 def wait_for_my_agents_list_ready(driver, wait):
-    wait.until(EC.presence_of_element_located(AGENT_LIST_CONTAINER))
-    wait.until(lambda d: len(d.find_elements(By.XPATH, AGENT_ITEMS_XPATH)) > 0)
-    wait.until(lambda d: len(d.find_elements(By.CSS_SELECTOR, AGENT_CARD_LINK_SELECTOR)) > 0)
-    _scroll_my_agents_list_to_top(driver)
+    container = _wait_for_agent_list_container(driver, wait)
+    wait.until(lambda d: len(container.find_elements(By.XPATH, AGENT_ITEMS_XPATH)) > 0)
+    wait.until(lambda d: len(container.find_elements(By.CSS_SELECTOR, AGENT_CARD_LINK_SELECTOR)) > 0)
+    _scroll_my_agents_list_to_top(driver, wait)
 
 
-def _scroll_my_agents_list_to_top(driver):
+def _scroll_my_agents_list_to_top(driver, wait=None):
     try:
-        container = driver.find_element(*AGENT_LIST_CONTAINER)
-        driver.execute_script("arguments[0].scrollTop = 0;", container)
+        if wait is not None:
+            scroller = _get_active_scroll_container(driver, wait)
+            driver.execute_script("arguments[0].scrollTop = 0;", scroller)
+            return
+
+        container = _find_agent_list_container_with_agents(driver)
+        if container is None:
+            return
+        scroller = driver.execute_script(
+            """
+            const list = arguments[0];
+            const hasScrollableY = (el) => {
+              if (!el) return false;
+              const style = getComputedStyle(el);
+              const oy = style.overflowY;
+              return (oy === 'auto' || oy === 'scroll') && (el.scrollHeight - el.clientHeight > 2);
+            };
+            let el = list;
+            while (el) {
+              if (hasScrollableY(el)) return el;
+              el = el.parentElement;
+            }
+            return list;
+            """,
+            container,
+        )
+        driver.execute_script("arguments[0].scrollTop = 0;", scroller)
     except Exception:
         pass
 
