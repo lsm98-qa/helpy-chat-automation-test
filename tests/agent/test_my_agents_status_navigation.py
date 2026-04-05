@@ -1,15 +1,22 @@
 import pytest
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
 
 from locators.agent_locators import AGENT_MY_AGENTS_BUTTON
 from locators.agent_create_locators import AGENT_NAME_INPUT
 
 
-AGENT_LIST_CONTAINER = (By.XPATH, "//div[@data-testid='virtuoso-item-list']")
-AGENT_ITEMS_XPATH = "//div[@data-testid='virtuoso-item-list']/div[@data-item-index]"
+AGENT_LIST_CONTAINER = (By.XPATH, "//*[@data-testid='virtuoso-item-list']")
+AGENT_LIST_SCROLLER = (By.XPATH, "//div[@data-testid='virtuoso-scroller']")
+AGENT_ITEMS_XPATH = "./*[@data-item-index or @data-index]"
 AGENT_CARD_LINK_SELECTOR = "a[href*='/ai-helpy-chat/agents/']"
+SAVED_AGENT_LINK_XPATH = (
+    "//a[contains(@href,'/ai-helpy-chat/agents/') and not(contains(@href,'/builder'))]"
+)
 DRAFT_CHIP_XPATH = ".//span[contains(@class,'MuiChip-label') and normalize-space()='초안']"
+STATUS_CHIP_LABELS_XPATH = ".//span[contains(@class,'MuiChip-label')]"
 AGENT_TITLE_IN_ITEM_XPATH = ".//p[contains(@class, 'MuiTypography-noWrap')]"
 CHAT_INPUT = (By.NAME, "input")
 
@@ -22,8 +29,116 @@ def _go_to_my_agents(wait):
 
 # 내 에이전트 카드 리스트가 로드될 때까지 기다린 뒤 카드 목록을 반환한다.
 def _get_agent_items(driver, wait):
-    wait.until(EC.presence_of_element_located(AGENT_LIST_CONTAINER))
-    return driver.find_elements(By.XPATH, AGENT_ITEMS_XPATH)
+    container = _wait_for_agent_list_container(driver, wait)
+    try:
+        wait.until(lambda d: len(container.find_elements(By.XPATH, AGENT_ITEMS_XPATH)) > 0)
+    except TimeoutException:
+        return []
+    return container.find_elements(By.XPATH, AGENT_ITEMS_XPATH)
+
+
+def _scroll_my_agents_list_one_page(driver, wait):
+    scroller = _wait_for_agent_list_scroller(wait)
+    previous_scroll_top = driver.execute_script("return arguments[0].scrollTop;", scroller)
+    driver.execute_script(
+        "arguments[0].scrollTop = arguments[0].scrollTop + arguments[0].clientHeight;",
+        scroller,
+    )
+    current_scroll_top = driver.execute_script("return arguments[0].scrollTop;", scroller)
+    reached_bottom = driver.execute_script(
+        "return arguments[0].scrollTop + arguments[0].clientHeight >= arguments[0].scrollHeight - 2;",
+        scroller,
+    )
+    return previous_scroll_top, current_scroll_top, reached_bottom
+
+
+def _get_visible_item_indexes(driver):
+    items = _get_agent_items(driver, WebDriverWait(driver, 2))
+    indexes = []
+    for item in items:
+        idx = _safe_int(_extract_item_index(item), default=-1)
+        if idx >= 0:
+            indexes.append(idx)
+    return indexes
+
+
+def _scroll_scroller_and_wait_update(driver, wait):
+    scroller = _get_active_scroll_container(driver, wait)
+    previous_scroll_top = driver.execute_script("return arguments[0].scrollTop;", scroller)
+    previous_indexes = _get_visible_item_indexes(driver)
+
+    driver.execute_script(
+        "arguments[0].scrollTop = arguments[0].scrollTop + Math.max(arguments[0].clientHeight * 0.9, 240);",
+        scroller,
+    )
+
+    try:
+        wait.until(
+            lambda d: (
+                driver.execute_script("return arguments[0].scrollTop;", scroller) > previous_scroll_top
+                or _get_visible_item_indexes(driver) != previous_indexes
+                or driver.execute_script(
+                    "return arguments[0].scrollTop + arguments[0].clientHeight >= arguments[0].scrollHeight - 2;",
+                    scroller,
+                )
+            )
+        )
+    except TimeoutException:
+        pass
+
+    current_scroll_top = driver.execute_script("return arguments[0].scrollTop;", scroller)
+    reached_bottom = driver.execute_script(
+        "return arguments[0].scrollTop + arguments[0].clientHeight >= arguments[0].scrollHeight - 2;",
+        scroller,
+    )
+    current_indexes = _get_visible_item_indexes(driver)
+    return previous_scroll_top, current_scroll_top, reached_bottom, previous_indexes, current_indexes
+
+
+def _find_agent_list_container_with_agents(driver):
+    containers = driver.find_elements(*AGENT_LIST_CONTAINER)
+    for container in containers:
+        if container.find_elements(By.CSS_SELECTOR, AGENT_CARD_LINK_SELECTOR):
+            return container
+    return None
+
+
+def _wait_for_agent_list_scroller(wait):
+    return wait.until(EC.presence_of_element_located(AGENT_LIST_SCROLLER))
+
+
+def _wait_for_agent_list_container(driver, wait):
+    wait.until(EC.presence_of_all_elements_located(AGENT_LIST_CONTAINER))
+    container = wait.until(lambda d: _find_agent_list_container_with_agents(d))
+    return container
+
+
+def _get_active_scroll_container(driver, wait):
+    # 전역에서 첫 스크롤러를 고르면 사이드바가 잡힐 수 있으므로,
+    # 리스트 자신의 조상 체인에서만 스크롤 컨테이너를 찾는다(=본문 영역 우선).
+    list_container = _wait_for_agent_list_container(driver, wait)
+    return driver.execute_script(
+        """
+        const list = arguments[0];
+        const hasScrollableY = (el) => {
+          if (!el) return false;
+          const style = getComputedStyle(el);
+          const oy = style.overflowY;
+          return (oy === 'auto' || oy === 'scroll') && (el.scrollHeight - el.clientHeight > 2);
+        };
+
+        // list 자신/조상 중 실제 스크롤 가능한 가장 가까운 요소
+        let el = list;
+        while (el) {
+          if (hasScrollableY(el)) return el;
+          el = el.parentElement;
+        }
+
+        // fallback
+        return list;
+        """,
+        list_container,
+    )
 
 
 # href에서 에이전트 ID를 추출한다.
@@ -56,19 +171,104 @@ def _extract_agent_meta_from_item(item):
     }
 
 
+def _extract_status_texts_from_item(item):
+    chips = item.find_elements(By.XPATH, STATUS_CHIP_LABELS_XPATH)
+    return [(chip.text or "").strip() for chip in chips if (chip.text or "").strip()]
+
+
+def _extract_item_index(item):
+    return item.get_attribute("data-index") or item.get_attribute("data-item-index") or "unknown"
+
+
+def _safe_int(value, default=-1):
+    try:
+        return int(value)
+    except Exception:
+        return default
+
+
+def _classify_item_status(item, href: str):
+    status_texts = _extract_status_texts_from_item(item)
+    lowered = [text.lower() for text in status_texts]
+
+    # 상태 칩 텍스트를 최우선으로 신뢰한다.
+    if any("초안" in text for text in status_texts):
+        return "draft", status_texts
+    if any(("저장" in text) or ("완료" in text) or ("게시" in text) for text in status_texts):
+        return "saved", status_texts
+    if any(("public" in text) or ("private" in text) for text in lowered):
+        return "saved", status_texts
+
+    # 칩이 없을 때만 href를 fallback으로 사용한다.
+    if "/builder" in href:
+        return "draft", status_texts
+    return "saved", status_texts
+
+
 # 상태 조건에 맞는 첫 카드(초안/저장 완료)를 찾는다.
 def _find_first_agent_item_by_status(agent_items, status):
-    for item in agent_items:
+    for idx, item in enumerate(agent_items, start=1):
         meta = _extract_agent_meta_from_item(item)
         if not meta:
             continue
 
-        is_draft = bool(item.find_elements(By.XPATH, DRAFT_CHIP_XPATH)) or meta["href"].endswith("/builder")
+        item_status, status_texts = _classify_item_status(item, meta["href"])
 
-        if status == "draft" and is_draft:
+        if status == "draft" and item_status == "draft":
             return item, meta
-        if status == "saved" and not is_draft:
+        if status == "saved" and item_status == "saved":
             return item, meta
+
+    return None, None
+
+
+def _find_first_agent_item_by_status_with_scroll(driver, wait, status, max_scroll_pages=30):
+    scroller = _get_active_scroll_container(driver, wait)
+    driver.execute_script("arguments[0].scrollTop = 0;", scroller)
+    seen_indexes = set()
+
+    for page in range(max_scroll_pages):
+        agent_items = _get_agent_items(driver, wait)
+        visible_indexes = [_extract_item_index(item) for item in agent_items]
+        seen_indexes.update(visible_indexes)
+        target_item, target_meta = _find_first_agent_item_by_status(agent_items, status)
+        if target_item and target_meta:
+            return target_item, target_meta
+
+        previous_scroll_top, current_scroll_top, reached_bottom = _scroll_my_agents_list_one_page(driver, wait)
+        if reached_bottom or current_scroll_top <= previous_scroll_top:
+            break
+
+    return None, None
+
+
+def _find_first_saved_agent_item_with_scroll(driver, wait, max_scroll_pages=60):
+    scroller = _get_active_scroll_container(driver, wait)
+    driver.execute_script("arguments[0].scrollTop = 0;", scroller)
+
+    previous_scroll_top = -1
+    for page in range(max_scroll_pages):
+        saved_links = driver.find_elements(By.XPATH, SAVED_AGENT_LINK_XPATH)
+        if saved_links:
+            link = saved_links[0]
+            href = link.get_attribute("href") or ""
+            agent_id = _extract_agent_id_from_href(href)
+            item = link.find_element(By.XPATH, "./ancestor::div[@data-item-index or @data-index][1]")
+            title_elements = item.find_elements(By.XPATH, AGENT_TITLE_IN_ITEM_XPATH)
+            title = (title_elements[0].text or "").strip() if title_elements else ""
+            return item, {"title": title, "href": href, "agent_id": agent_id}
+
+        (
+            scrolled_from,
+            scrolled_to,
+            reached_bottom,
+            indexes_before,
+            indexes_after,
+        ) = _scroll_scroller_and_wait_update(driver, wait)
+        if reached_bottom or scrolled_to <= previous_scroll_top:
+            break
+
+        previous_scroll_top = scrolled_to
 
     return None, None
 
@@ -77,7 +277,7 @@ def _find_first_agent_item_by_status(agent_items, status):
 def _return_to_my_agents(driver, wait):
     driver.back()
     wait.until(EC.url_contains("/ai-helpy-chat/agents/mine"))
-    wait.until(EC.presence_of_element_located(AGENT_LIST_CONTAINER))
+    _wait_for_agent_list_container(driver, wait)
 
 
 # =========================
@@ -122,8 +322,7 @@ def test_click_saved_agent_navigates_to_agent_chat_page(navigate_to_agent_explor
     driver = navigate_to_agent_explore
     _go_to_my_agents(wait)
 
-    agent_items = _get_agent_items(driver, wait)
-    saved_item, saved_meta = _find_first_agent_item_by_status(agent_items, "saved")
+    saved_item, saved_meta = _find_first_saved_agent_item_with_scroll(driver, wait)
 
     if not saved_item or not saved_meta:
         pytest.skip("저장 완료 상태 에이전트를 찾지 못했습니다.")
