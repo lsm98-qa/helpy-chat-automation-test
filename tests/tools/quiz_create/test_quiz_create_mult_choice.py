@@ -56,12 +56,13 @@ def _select_dropdown_option(driver, label_text, option_text):
 # =========================
 # 퀴즈 생성에서 객관식 단일 선택 유형을 선택했을 때 선택지가 정상 생성되는지 검증
 # =========================
-def test_quiz_create_single_choice(logged_in_driver):
+def test_quiz_create_single_choice(logged_in_driver, testlog):
     driver = logged_in_driver
 
     # ==========
     # Arrange
     # ==========
+    testlog.arrange("open_quiz_create_tool", quiz_type="객관식 (단일 선택)", difficulty="상")
     # 도구 메뉴에서 퀴즈 생성 페이지로 진입
     _click(driver, By.XPATH, "//span[text()='도구']")
     _click(driver, By.XPATH, "//p[text()='퀴즈 생성']")
@@ -85,6 +86,7 @@ def test_quiz_create_single_choice(logged_in_driver):
     # Act
     # ==========
     # 생성 버튼을 클릭하고 필요 시 다시 생성 확인 모달을 처리
+    testlog.act("generate_single_choice_quiz")
     generate_button = WebDriverWait(driver, 10).until(
         EC.element_to_be_clickable((
             By.XPATH,
@@ -128,6 +130,11 @@ def test_quiz_create_single_choice(logged_in_driver):
         timeout=30,
     )
 
+    testlog.assert_(
+        "single_choice_quiz_options_rendered",
+        expected=True,
+        actual=(option_a.is_displayed() and option_b.is_displayed()),
+    )
     assert option_a.is_displayed(), "객관식 퀴즈 생성 실패: A 선택지가 표시되지 않았습니다."
     assert option_b.is_displayed(), "객관식 퀴즈 생성 실패: B 선택지가 표시되지 않았습니다."
 

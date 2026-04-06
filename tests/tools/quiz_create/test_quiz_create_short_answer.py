@@ -110,12 +110,13 @@ def _generate_quiz_result(driver):
 # =========================
 # 퀴즈 생성에서 주관식 유형을 선택했을 때 단일 답안 형태로 생성되는지 검증
 # =========================
-def test_quiz_create_short_answer(logged_in_driver):
+def test_quiz_create_short_answer(logged_in_driver, testlog):
     driver = logged_in_driver
 
     # ==========
     # Arrange
     # ==========
+    testlog.arrange("open_quiz_create_tool", quiz_type="주관식", difficulty="상")
     # 도구 메뉴에서 퀴즈 생성 페이지로 진입
     _click(driver, By.XPATH, "//span[text()='도구']")
     _click(driver, By.XPATH, "//p[text()='퀴즈 생성']")
@@ -138,6 +139,7 @@ def test_quiz_create_short_answer(logged_in_driver):
     # ==========
     # Act
     # ==========
+    testlog.act("generate_short_answer_quiz")
     _generate_quiz_result(driver)
     _wait_for_result_refresh(driver)
 
@@ -162,6 +164,12 @@ def test_quiz_create_short_answer(logged_in_driver):
         timeout=5,
     )
 
+    testlog.assert_(
+        "short_answer_quiz_option_shape_valid",
+        expected=True,
+        actual=(option_a.is_displayed() and not option_b_exists),
+        option_b_exists=option_b_exists,
+    )
     assert not option_b_exists, "주관식 퀴즈 생성 실패: B 선택지가 표시되었습니다."
 
     print("주관식 퀴즈 생성 완료!")
