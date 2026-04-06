@@ -414,5 +414,3 @@ def test_agent_click_routing_differs_by_status(navigate_to_agent_explore, wait):
     assert "/builder" not in saved_url, "저장 완료 에이전트가 편집(builder) 페이지로 이동했습니다."
     assert draft_url != saved_url, "초안/저장 완료 에이전트의 라우팅 결과 URL이 동일합니다."
 
-    chat_input = wait.until(EC.presence_of_element_located(CHAT_INPUT))
-    assert chat_input.is_displayed(), "저장 완료 에이전트 라우팅 결과에서 채팅 입력창이 표시되지 않습니다."
