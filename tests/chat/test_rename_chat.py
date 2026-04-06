@@ -6,7 +6,7 @@ from pages.chat_actions import click_top_chat_item_option_button, get_top_chat_i
 # =========================
 # 이름 변경 기능 사용 시 정상적으로 변경이 되는 지 검증
 # =========================
-def test_can_rename_top_chat_item(logged_in_driver, wait):
+def test_can_rename_top_chat_item(logged_in_driver, wait, testlog):
     #==========
     # Arrange
     #==========
@@ -15,6 +15,7 @@ def test_can_rename_top_chat_item(logged_in_driver, wait):
 
     # 채팅 목록 확인
     chat = get_top_chat_item_or_none(wait)
+    testlog.arrange("logged_in_driver_ready", has_existing_chat=(chat is not None))
     
 
     
@@ -22,6 +23,7 @@ def test_can_rename_top_chat_item(logged_in_driver, wait):
     # Act
     #==========
 
+    testlog.act("open_rename_modal_and_submit_new_name")
     if chat is None:
         click_new_chat(wait)
         send_chat_message(wait, "A")
@@ -65,6 +67,14 @@ def test_can_rename_top_chat_item(logged_in_driver, wait):
     chat_item = _get_top_chat_item(wait)
 
     # 변경된 채팅 이름 확인
-    assert new_name == chat_item.text.strip(), "입력한 이름과 변경된 이름이 일치하지 않습니다."
+    is_renamed = new_name == chat_item.text.strip()
+    testlog.assert_(
+        "top_chat_item_renamed",
+        expected=True,
+        actual=is_renamed,
+        expected_name=new_name,
+        actual_name=chat_item.text.strip(),
+    )
+    assert is_renamed, "입력한 이름과 변경된 이름이 일치하지 않습니다."
 
     

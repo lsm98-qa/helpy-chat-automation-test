@@ -11,13 +11,15 @@ from pages.chat_actions import click_new_chat, send_chat_message
 # =========================
 # 대화 생성 후 재로그인 시 메시지가 유지되는 지 검증
 # =========================
-def test_chat_persistence_after_relogin(logged_in_driver, wait):
+def test_chat_persistence_after_relogin(logged_in_driver, wait, testlog):
     #==========
     # Arrange
     #==========
     # 로그인
     driver = logged_in_driver
     account_menu = AccountMenu(driver, wait)
+    first_chat = "안녕하세요"
+    testlog.arrange("logged_in_driver_ready", message=first_chat)
 
     # 새 대화 시작
     click_new_chat(wait)
@@ -25,9 +27,9 @@ def test_chat_persistence_after_relogin(logged_in_driver, wait):
     #==========
     # Act
     #==========
+    testlog.act("send_message_logout_and_relogin")
     # 현재 응답 메시지 개수 확인
     AI_MESSAGE_TEXTS = (By.CSS_SELECTOR, "div[data-status='complete'].elice-aichat__markdown p")
-    first_chat = "안녕하세요"
     before_count = len(driver.find_elements(*AI_MESSAGE_TEXTS))
 
     # 대화 전송
@@ -55,4 +57,10 @@ def test_chat_persistence_after_relogin(logged_in_driver, wait):
     wait.until(EC.presence_of_element_located((By.NAME, "input")))
     wait.until(lambda d: len(d.find_elements(*AI_MESSAGE_TEXTS)) > 0)
     after_relogin = driver.find_elements(*AI_MESSAGE_TEXTS)[-1].text
-    assert after_relogin == before_logout, "로그아웃 전과 채팅이 동일하지 않습니다."
+    is_persisted = after_relogin == before_logout
+    testlog.assert_(
+        "chat_message_persisted_after_relogin",
+        expected=True,
+        actual=is_persisted,
+    )
+    assert is_persisted, "로그아웃 전과 채팅이 동일하지 않습니다."

@@ -5,18 +5,20 @@ from pages.chat_actions import get_top_chat_item_or_none, click_top_chat_item_op
 # =========================
 # 채팅 삭제 기능이 정상적으로 동작하는 지 검증
 # =========================
-def test_can_delete_top_chat_item(logged_in_driver, wait):
+def test_can_delete_top_chat_item(logged_in_driver, wait, testlog):
     #==========
     # Arrange
     #========
     # 로그인
     driver = logged_in_driver
     chat = get_top_chat_item_or_none(wait)
+    testlog.arrange("logged_in_driver_ready", has_existing_chat=(chat is not None))
     
 
     #==========
     # Act
     #==========
+    testlog.act("delete_top_chat_item")
     if chat is None:
         click_new_chat(wait)
         send_chat_message(wait, "A")
@@ -56,7 +58,18 @@ def test_can_delete_top_chat_item(logged_in_driver, wait):
     # 채팅이 남아 있으면 최상단 항목 비교
     if len(chat_items) > 0:
         delete_after_top_chat = _get_top_chat_item(wait)
+        testlog.assert_(
+            "top_chat_item_deleted_and_replaced",
+            expected=True,
+            actual=(delete_after_top_chat != delete_before_top_chat),
+            remaining_chat_count=len(chat_items),
+        )
         assert delete_after_top_chat != delete_before_top_chat, "채팅 기록이 삭제되지 않았습니다."
 
     else:
+        testlog.assert_(
+            "all_chat_items_deleted",
+            expected=0,
+            actual=len(chat_items),
+        )
         assert len(chat_items) == 0, "채팅 기록이 삭제되지 않았습니다."

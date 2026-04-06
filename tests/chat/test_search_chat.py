@@ -12,12 +12,13 @@ import pytest
 # =========================
 # 검색어에 맞게 올바르게 검색 값이 나오는 지, 클릭한 채팅으로 정상 진입 되는 지 검증
 # =========================
-def test_search_chat_and_open_chat_matches_title(logged_in_driver, wait, keyword, search_case):
+def test_search_chat_and_open_chat_matches_title(logged_in_driver, wait, keyword, search_case, testlog):
     #==========
     # Arrange
     #==========
     # 로그인
     logged_in_driver
+    testlog.arrange("logged_in_driver_ready", keyword=keyword, search_case=search_case)
 
     # 로그인 요소가 사라질 때까지 대기
     wait.until(EC.invisibility_of_element_located((By.NAME, "loginId")))
@@ -28,6 +29,7 @@ def test_search_chat_and_open_chat_matches_title(logged_in_driver, wait, keyword
     #==========
     # Act
     #==========
+    testlog.act("open_search_and_filter_chat_titles")
     click_search_menu(wait)
 
     # 검색어 입력
@@ -69,7 +71,15 @@ def test_search_chat_and_open_chat_matches_title(logged_in_driver, wait, keyword
     # after : 기대 결과가 20개 초과일 때는 리스트 앞 20개까지 비교하여 일치하면 pass
 
     if len(expected) > 20 :
-        assert expected[:20] == search_chat_titles[:20], (f"[{search_case}] 검색 결과가 기대 결과와 일치하지 않습니다.")
+        is_top20_matched = expected[:20] == search_chat_titles[:20]
+        testlog.assert_(
+            "search_result_matches_expected_top20",
+            expected=True,
+            actual=is_top20_matched,
+            expected_count=len(expected),
+            actual_count=len(search_chat_titles),
+        )
+        assert is_top20_matched, (f"[{search_case}] 검색 결과가 기대 결과와 일치하지 않습니다.")
 
     else : 
         invalid_results = [t for t in search_chat_titles if keyword_lower not in (t or "").lower()] # 검색어 미포함 결과
@@ -84,12 +94,20 @@ def test_search_chat_and_open_chat_matches_title(logged_in_driver, wait, keyword
         if missing_results:
             errors.append(f"[{search_case}] 누락된 결과가 있습니다.: {missing_results}")
 
+        testlog.assert_(
+            "search_result_matches_expected",
+            expected=True,
+            actual=(not errors),
+            expected_count=len(expected),
+            actual_count=len(search_chat_titles),
+        )
         assert not errors, "\n".join(errors)
 
     if search_chat_titles:
         #==========
         # Act
         #==========
+        testlog.act("open_top_search_result_and_check_chat_title")
         # 최상단 검색 결과 제목 저장
         top_chat_title = wait.until(
             lambda d: d.find_element(By.CSS_SELECTOR, "div[role='dialog'] ul > li span")
@@ -129,4 +147,12 @@ def test_search_chat_and_open_chat_matches_title(logged_in_driver, wait, keyword
         )
 
         name_input_value = name_input_box.get_attribute("value")
-        assert name_input_value == top_chat_title, f"[{search_case}] 선택한 채팅과 이름이 일치하지 않습니다."
+        is_selected_chat_matched = name_input_value == top_chat_title
+        testlog.assert_(
+            "opened_chat_title_matches_selected_result",
+            expected=True,
+            actual=is_selected_chat_matched,
+            selected_title=top_chat_title,
+            opened_title=name_input_value,
+        )
+        assert is_selected_chat_matched, f"[{search_case}] 선택한 채팅과 이름이 일치하지 않습니다."

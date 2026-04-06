@@ -7,12 +7,13 @@ import pytest
 # 대화 중 ai 모델 전환 시 채팅이 동일하게 로드 되는 지 검증
 # =========================
 @pytest.mark.xfail(reason = "대화 후 ai 모델 전환 시 처음 입력한 내 채팅만 화면에 출력되는 오류 발생")
-def test_chat_persistence_after_change_ai_model(logged_in_driver, wait):
+def test_chat_persistence_after_change_ai_model(logged_in_driver, wait, testlog):
     #==========
     # Arrange
     #==========
     # 로그인
     driver = logged_in_driver
+    testlog.arrange("logged_in_driver_ready")
 
     # 로그인 요소가 사라질 때까지 대기
     wait.until(EC.invisibility_of_element_located((By.NAME, "loginId")))
@@ -24,6 +25,7 @@ def test_chat_persistence_after_change_ai_model(logged_in_driver, wait):
     # Act
     #==========    
     # 새 대화 생성
+    testlog.act("send_message_and_change_ai_model", message="hi")
     click_new_chat(wait)
 
     # AI 응답 영역 확인
@@ -47,4 +49,10 @@ def test_chat_persistence_after_change_ai_model(logged_in_driver, wait):
     #==========    
     # AI 응답 일치 여부 검증
     ai_messages = driver.find_elements(*AI_MESSAGE_TEXTS)
+    testlog.assert_(
+        "ai_messages_visible_after_model_change",
+        expected=True,
+        actual=(len(ai_messages) > 0),
+        ai_message_count=len(ai_messages),
+    )
     assert len(ai_messages) > 0, "AI 모델 전환환 후 응답 메시지가 확인되지 않습니다."
