@@ -131,7 +131,7 @@ def _verify_slide_count(ppt_file_path, expected_slide_count, expected_section_co
 # PPT 생성 후 다운로드 파일의 슬라이드 수와 섹션 수가 요청값과 일치하는지 검증
 # =========================
 @pytest.mark.xfail(reason="PPT 생성 도구의 불안정성으로 인해 현재 PPT 슬라이드 수 불일치 버그 존재")
-def test_ppt_create(logged_in_driver, wait):
+def test_ppt_create(logged_in_driver, wait, testlog):
     driver = logged_in_driver
     expected_slide_count = 10
     expected_section_count = 3
@@ -139,6 +139,11 @@ def test_ppt_create(logged_in_driver, wait):
     # ==========
     # Arrange
     # ==========
+    testlog.arrange(
+        "open_ppt_create_tool",
+        expected_slide_count=expected_slide_count,
+        expected_section_count=expected_section_count,
+    )
     # 도구 메뉴에서 PPT 생성 페이지로 진입
     _click(driver, *MENU_TOOLS)
     _click(driver, By.XPATH, "//p[text()='PPT 생성']")
@@ -158,6 +163,7 @@ def test_ppt_create(logged_in_driver, wait):
     # Act
     # ==========
     # 제출 버튼 상태에 따라 생성 또는 다시 생성을 수행
+    testlog.act("submit_ppt_generation_request")
     submit_button = wait.until(
         EC.element_to_be_clickable((By.CSS_SELECTOR, "button[type='submit']"))
     )
@@ -191,4 +197,10 @@ def test_ppt_create(logged_in_driver, wait):
         downloaded_ppt,
         expected_slide_count,
         expected_section_count,
+    )
+    testlog.assert_(
+        "ppt_download_and_content_verification_success",
+        expected=True,
+        actual=True,
+        downloaded_ppt=str(downloaded_ppt),
     )
