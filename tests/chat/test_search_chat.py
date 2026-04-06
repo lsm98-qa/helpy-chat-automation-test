@@ -1,6 +1,6 @@
 ﻿from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
-from pages.chat_actions import click_search_menu, get_all_chat_titles, input_search_keyword, get_visible_search_result_titles
+from pages.chat_actions import click_search_menu, get_all_chat_titles, input_search_keyword, get_visible_search_result_titles, search_results_match_expected
 from tests.chat.constants import SEARCH_KEYWORD_TEST_CASES
 import pytest
 
@@ -55,14 +55,9 @@ def test_search_chat_and_open_chat_matches_title(logged_in_driver, wait, keyword
             t for t in all_chat_titles
             if t is not None and keyword.lower() in t.lower()
         ]
-    
+
     # 검색 결과에 기대값이 아닌 문자가 없을 때 까지 대기
-    wait.until(
-        lambda d: all(
-            (el.get_attribute("textContent") or "") in expected
-            for el in d.find_elements(By.CSS_SELECTOR, "div[role='dialog'] ul > li")
-        )
-    )
+    wait.until(lambda d: search_results_match_expected(d, expected))
 
 
     search_chat_titles = get_visible_search_result_titles(wait) # 검색 결과 제목 조회
@@ -147,12 +142,4 @@ def test_search_chat_and_open_chat_matches_title(logged_in_driver, wait, keyword
         )
 
         name_input_value = name_input_box.get_attribute("value")
-        is_selected_chat_matched = name_input_value == top_chat_title
-        testlog.assert_(
-            "opened_chat_title_matches_selected_result",
-            expected=True,
-            actual=is_selected_chat_matched,
-            selected_title=top_chat_title,
-            opened_title=name_input_value,
-        )
-        assert is_selected_chat_matched, f"[{search_case}] 선택한 채팅과 이름이 일치하지 않습니다."
+        assert name_input_value == top_chat_title, f"[{search_case}] 선택한 채팅과 이름이 일치하지 않습니다."
