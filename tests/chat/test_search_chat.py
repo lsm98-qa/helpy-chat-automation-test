@@ -3,7 +3,6 @@ from selenium.webdriver.support import expected_conditions as EC
 from pages.chat_actions import click_search_menu, get_all_chat_titles, input_search_keyword, get_visible_search_result_titles, search_results_match_expected
 from tests.chat.constants import SEARCH_KEYWORD_TEST_CASES
 import pytest
-from selenium.common.exceptions import StaleElementReferenceException
 
 @pytest.mark.parametrize(
     "keyword, search_case",
