@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, time
 
 from tests.agent.agent_update_helpers import (
     click_save,
@@ -20,12 +20,16 @@ def test_update_published_agent_name_reflects_in_ui(navigate_to_agent_explore, w
     # ==========
     driver = navigate_to_agent_explore
     agent_id, old_name = open_saved_agent_builder(driver, wait)
-    new_name = f"published-agent-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    new_name = f"published-agent-{datetime.now().strftime('%Y%m%d%H%M%S%f')}"
 
     # ==========
     # Act
     # ==========
     update_agent_name(wait, new_name)
+    
+    
+    _ = wait
+
     click_save(wait)
     wait_for_save_feedback(driver, wait)
     return_to_my_agents_from_builder(driver, wait)

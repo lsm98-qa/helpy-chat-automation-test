@@ -14,6 +14,9 @@ def navigate_to_agent_explore(logged_in_driver, wait, base_url):
     assert current_url == base_url, (
         f"현재 URL은 '{base_url}'이어야 하지만, 실제 URL은 '{current_url}'입니다."
     )
+    
+    # 메뉴 요소 준비 확인
+    wait.until(EC.presence_of_element_located(MENU_AGENT_EXPLORE))
 
     menu_section.click_agent_explore()
 

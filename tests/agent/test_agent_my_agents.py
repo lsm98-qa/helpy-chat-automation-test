@@ -1,14 +1,17 @@
 import pytest
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from locators.menu_locators import *
 from locators.agent_locators import *
 
 AGENT_LIST_CONTAINER = (By.XPATH, "//div[@data-testid='virtuoso-item-list']")
-AGENT_ITEMS_XPATH = "//div[@data-testid='virtuoso-item-list']/div[@data-item-index]"
+AGENT_ITEMS_XPATH = "//div[@data-testid='virtuoso-item-list']/div[@data-item-index or @data-index]"
 AGENT_CARD_LINK_SELECTOR = "a[href*='/ai-helpy-chat/agents/']"
 DELETE_CONFIRM_DIALOG = (By.CSS_SELECTOR, "div[role='dialog']")
 DELETE_CONFIRM_BUTTON_XPATH = ".//button[normalize-space()='삭제']"
+MY_AGENTS_TITLE = (By.XPATH, "//h6[normalize-space()='내 에이전트']")
+AGENT_EXPLORE_TITLE = (By.XPATH, "//h2[normalize-space()='에이전트 탐색']")
 
 
 # 에이전트 탐색 페이지에서 내 에이전트 페이지로 이동한다.
@@ -19,7 +22,11 @@ def _go_to_my_agents(wait):
 
 # 내 에이전트 카드 리스트가 로드될 때까지 기다린 뒤 카드 목록을 반환한다.
 def _get_agent_items(driver, wait):
-    wait.until(EC.presence_of_element_located(AGENT_LIST_CONTAINER))
+    wait.until(EC.visibility_of_any_elements_located(AGENT_LIST_CONTAINER))
+    try:
+        wait.until(lambda d: len(d.find_elements(By.XPATH, AGENT_ITEMS_XPATH)) > 0)
+    except TimeoutException:
+        return []
     return driver.find_elements(By.XPATH, AGENT_ITEMS_XPATH)
 
 
@@ -76,9 +83,9 @@ def test_navigate_to_my_agents(navigate_to_agent_explore, wait):
     # ==========
     # Assert
     # ==========
-    my_agents_title = wait.until(EC.visibility_of_element_located(MENU_H6_TITLE))
-
-    assert my_agents_title.text == "내 에이전트"
+    wait.until(EC.text_to_be_present_in_element(MY_AGENTS_TITLE, "내 에이전트"))
+    my_agents_title = wait.until(EC.visibility_of_element_located(MY_AGENTS_TITLE))
+    assert my_agents_title.text.strip() == "내 에이전트"
 
 # =========================
 # 에이전트 탐색 -> 내 에이전트 페이지에서 뒤로가기 버튼 테스트
@@ -100,9 +107,9 @@ def test_navigate_back_to_agent_explore(navigate_to_agent_explore, wait):
     # ==========
     # Assert
     # ==========
-    agent_title = wait.until(EC.visibility_of_element_located(MENU_H2_TITLE))
-
-    assert agent_title.text == "에이전트 탐색"
+    wait.until(EC.text_to_be_present_in_element(AGENT_EXPLORE_TITLE, "에이전트 탐색"))
+    agent_title = wait.until(EC.visibility_of_element_located(AGENT_EXPLORE_TITLE))
+    assert agent_title.text.strip() == "에이전트 탐색"
 
 # =========================
 # 내 에이전트 페이지의 각 에이전트 카드의 수정 버튼이 표시되는지 테스트

@@ -58,7 +58,7 @@ def driver(pytestconfig: pytest.Config):
 
     chrome_service = Service()
     browser = webdriver.Chrome(service=chrome_service, options=options)
-    browser.implicitly_wait(3)
+    # browser.implicitly_wait(3)
 
     yield browser
 
