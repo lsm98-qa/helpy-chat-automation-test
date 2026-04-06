@@ -142,4 +142,12 @@ def test_search_chat_and_open_chat_matches_title(logged_in_driver, wait, keyword
         )
 
         name_input_value = name_input_box.get_attribute("value")
+        is_selected_chat_matched = name_input_value == top_chat_title
+        testlog.assert_(
+            "opened_chat_title_matches_selected_result",
+            expected=True,
+            actual=is_selected_chat_matched,
+            selected_title=top_chat_title,
+            opened_title=name_input_value,
+        )
         assert name_input_value == top_chat_title, f"[{search_case}] 선택한 채팅과 이름이 일치하지 않습니다."
