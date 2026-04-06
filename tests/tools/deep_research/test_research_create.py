@@ -21,12 +21,13 @@ def type_text(driver, by, value, text):
     element.send_keys(Keys.BACKSPACE)
     element.send_keys(text)
 
-def test_deep_research_generation(logged_in_driver):
+def test_deep_research_generation(logged_in_driver, testlog):
     driver = logged_in_driver
 
     # =========================
     # Arrange (준비)
     # =========================
+    testlog.arrange("open_deep_research_tool_and_fill_form")
     click(driver, By.XPATH, "//span[text()='도구']")
     click(driver, By.XPATH, "//p[text()='심층 조사']")
 
@@ -36,6 +37,7 @@ def test_deep_research_generation(logged_in_driver):
     # =========================
     # Act (실행)
     # =========================
+    testlog.act("submit_deep_research_generation")
     click(driver, By.CSS_SELECTOR, "button[type='submit'][form='tool-factory-do_deep_research']")
 
     # 결과 다시 생성 팝업 처리
@@ -51,6 +53,11 @@ def test_deep_research_generation(logged_in_driver):
     # =========================
     result_title = WebDriverWait(driver, 600, poll_frequency=5).until(
         EC.visibility_of_element_located((By.CSS_SELECTOR, "h1.css-1ypk2ex"))
+    )
+    testlog.assert_(
+        "deep_research_result_title_visible",
+        expected=True,
+        actual=bool(result_title.text.strip()),
     )
     assert result_title.text.strip() != "", "심층 조사 결과가 생성되지 않았습니다."
 

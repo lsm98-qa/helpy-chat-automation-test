@@ -154,7 +154,7 @@ def _save_text_file(file_path, text):
 # =========================
 # 세부 특기사항에서 학생 정보와 활동 키워드를 저장한 뒤 AI 생성 결과를 txt 파일로 저장하는지 검증
 # =========================
-def test_spec_ai_result_save_to_txt(logged_in_driver):
+def test_spec_ai_result_save_to_txt(logged_in_driver, testlog):
     driver = logged_in_driver
     student_name = "홍길동"
     result_file_path = Path("tests/tools/spec_detail/downloads/spec_ai_result_honggildong.txt")
@@ -162,11 +162,16 @@ def test_spec_ai_result_save_to_txt(logged_in_driver):
     # ==========
     # Arrange
     # ==========
+    testlog.arrange(
+        "open_spec_detail_tool_and_prepare_student_info_step",
+        student_name=student_name,
+    )
     _go_to_student_info_step(driver)
 
     # ==========
     # Act
     # ==========
+    testlog.act("save_student_keyword_and_generate_ai_result")
     _save_student_keyword(driver, student_name)
     ai_result_text = _wait_for_completed_ai_result(driver, student_name)
     _save_text_file(result_file_path, ai_result_text)
@@ -174,6 +179,16 @@ def test_spec_ai_result_save_to_txt(logged_in_driver):
     # ==========
     # Assert
     # ==========
+    testlog.assert_(
+        "spec_ai_result_saved_to_txt",
+        expected=True,
+        actual=(
+            bool(ai_result_text)
+            and result_file_path.exists()
+            and bool(result_file_path.read_text(encoding="utf-8").strip())
+        ),
+        result_file=str(result_file_path),
+    )
     assert ai_result_text, "AI 생성 결과가 비어 있습니다."
     assert result_file_path.exists(), "AI 생성 결과 txt 파일이 생성되지 않았습니다."
     assert result_file_path.read_text(encoding="utf-8").strip(), "생성된 txt 파일 내용이 비어 있습니다."
