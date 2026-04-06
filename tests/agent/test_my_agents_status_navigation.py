@@ -306,11 +306,12 @@ def _return_to_my_agents(driver, wait):
 # =========================
 # 초안 에이전트 클릭 시 에이전트 만들기(편집) 페이지로 이동하는지 테스트
 # =========================
-def test_click_draft_agent_navigates_to_agent_edit_page(navigate_to_agent_explore, wait):
+def test_click_draft_agent_navigates_to_agent_edit_page(navigate_to_agent_explore, wait, testlog):
     # ==========
     # Arrange
     # ==========
     driver = navigate_to_agent_explore
+    testlog.arrange("prepare_draft_agent_navigation_check")
     _go_to_my_agents(wait)
 
     draft_item, draft_meta = _find_first_agent_item_by_status_with_scroll(driver, wait, "draft")
@@ -321,6 +322,7 @@ def test_click_draft_agent_navigates_to_agent_edit_page(navigate_to_agent_explor
     # ==========
     # Act
     # ==========
+    testlog.act("click_draft_agent_card")
     draft_item.find_element(By.CSS_SELECTOR, AGENT_CARD_LINK_SELECTOR).click()
 
     # ==========
@@ -328,6 +330,12 @@ def test_click_draft_agent_navigates_to_agent_edit_page(navigate_to_agent_explor
     # ==========
     expected_path = f"/ai-helpy-chat/agents/{draft_meta['agent_id']}/builder"
     wait.until(EC.url_contains(expected_path))
+    testlog.assert_(
+        "draft_agent_navigates_to_builder",
+        expected=True,
+        actual=(expected_path in driver.current_url),
+        expected_path=expected_path,
+    )
 
     assert expected_path in driver.current_url, "초안 에이전트 클릭 후 편집 페이지 URL이 올바르지 않습니다."
     agent_name_input = wait.until(EC.visibility_of_element_located(AGENT_NAME_INPUT))
@@ -337,11 +345,12 @@ def test_click_draft_agent_navigates_to_agent_edit_page(navigate_to_agent_explor
 # =========================
 # 저장 완료 에이전트 클릭 시 에이전트 채팅 페이지로 이동하는지 테스트
 # =========================
-def test_click_saved_agent_navigates_to_agent_chat_page(navigate_to_agent_explore, wait):
+def test_click_saved_agent_navigates_to_agent_chat_page(navigate_to_agent_explore, wait, testlog):
     # ==========
     # Arrange
     # ==========
     driver = navigate_to_agent_explore
+    testlog.arrange("prepare_saved_agent_navigation_check")
     _go_to_my_agents(wait)
 
     saved_item, saved_meta = _find_first_saved_agent_item_with_scroll(driver, wait)
@@ -352,6 +361,7 @@ def test_click_saved_agent_navigates_to_agent_chat_page(navigate_to_agent_explor
     # ==========
     # Act
     # ==========
+    testlog.act("click_saved_agent_card")
     saved_item.find_element(By.CSS_SELECTOR, AGENT_CARD_LINK_SELECTOR).click()
 
     # ==========
@@ -359,6 +369,13 @@ def test_click_saved_agent_navigates_to_agent_chat_page(navigate_to_agent_explor
     # ==========
     expected_path = f"/ai-helpy-chat/agents/{saved_meta['agent_id']}"
     wait.until(EC.url_contains(expected_path))
+    is_saved_route_valid = expected_path in driver.current_url and "/builder" not in driver.current_url
+    testlog.assert_(
+        "saved_agent_navigates_to_chat_page",
+        expected=True,
+        actual=is_saved_route_valid,
+        expected_path=expected_path,
+    )
 
     assert expected_path in driver.current_url, "저장 완료 에이전트 클릭 후 URL이 선택한 에이전트와 일치하지 않습니다."
     assert "/builder" not in driver.current_url, "저장 완료 에이전트가 편집(builder) 페이지로 이동했습니다."
@@ -375,11 +392,12 @@ def test_click_saved_agent_navigates_to_agent_chat_page(navigate_to_agent_explor
 # =========================
 # 상태(초안/저장 완료)에 따라 라우팅이 서로 다르게 동작하는지 테스트
 # =========================
-def test_agent_click_routing_differs_by_status(navigate_to_agent_explore, wait):
+def test_agent_click_routing_differs_by_status(navigate_to_agent_explore, wait, testlog):
     # ==========
     # Arrange
     # ==========
     driver = navigate_to_agent_explore
+    testlog.arrange("prepare_status_based_routing_check")
     _go_to_my_agents(wait)
 
     draft_item, draft_meta = _find_first_agent_item_by_status_with_scroll(driver, wait, "draft")
@@ -390,6 +408,7 @@ def test_agent_click_routing_differs_by_status(navigate_to_agent_explore, wait):
     # ==========
     # Act
     # ==========
+    testlog.act("open_draft_then_saved_agent_and_compare_routes")
     draft_item.find_element(By.CSS_SELECTOR, AGENT_CARD_LINK_SELECTOR).click()
     draft_expected_path = f"/ai-helpy-chat/agents/{draft_meta['agent_id']}/builder"
     wait.until(EC.url_contains(draft_expected_path))
@@ -410,6 +429,14 @@ def test_agent_click_routing_differs_by_status(navigate_to_agent_explore, wait):
     # ==========
     # Assert
     # ==========
+    routing_differs = ("/builder" in draft_url) and ("/builder" not in saved_url) and (draft_url != saved_url)
+    testlog.assert_(
+        "routing_differs_by_agent_status",
+        expected=True,
+        actual=routing_differs,
+        draft_url=draft_url,
+        saved_url=saved_url,
+    )
     assert "/builder" in draft_url, "초안 에이전트가 편집(builder) 페이지로 이동하지 않았습니다."
     assert "/builder" not in saved_url, "저장 완료 에이전트가 편집(builder) 페이지로 이동했습니다."
     assert draft_url != saved_url, "초안/저장 완료 에이전트의 라우팅 결과 URL이 동일합니다."
