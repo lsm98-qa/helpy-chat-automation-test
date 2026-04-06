@@ -53,7 +53,9 @@ def get_top_chat_item_or_none(wait):
 # 채팅 기록 수집
 def get_all_chat_titles(wait):
     driver = wait._driver
-    scroller = driver.find_element(By.CSS_SELECTOR, "div[data-testid='virtuoso-scroller']")
+    scroller = wait.until(
+        lambda d: d.find_element(By.CSS_SELECTOR, "div[data-testid='virtuoso-scroller']")
+    )
 
     # 채팅 스크롤 위치 초기화 하고 시작
     driver.execute_script("arguments[0].scrollTop = 0", scroller)
@@ -67,7 +69,9 @@ def get_all_chat_titles(wait):
     while True:
         try:
             # 현재 화면에 보이는 채팅 항목 수집
-            chat_items = driver.find_elements(By.CSS_SELECTOR, "a[data-index]")
+            chat_items = driver.find_elements(
+                By.CSS_SELECTOR, "div[data-testid='virtuoso-scroller'] a[data-index]"
+            )
 
             for item in chat_items:
                 # 채팅 제목과 링크 가져오기
@@ -107,6 +111,16 @@ def input_search_keyword(wait, keyword):
     search_input.clear()
     search_input.send_keys(keyword)
     return search_input
+
+# 검색 결과에 기대값이 아닌 문자가 없을 때 까지 대기 (StaleElementReferenceException 발생 예외 처리)
+def search_results_match_expected(driver, expected):
+    try:
+        return all(
+            (el.get_attribute("textContent") or "") in expected
+            for el in driver.find_elements(By.CSS_SELECTOR, "div[role='dialog'] ul > li")
+        )
+    except StaleElementReferenceException:
+        return False
 
 # 화면에 보이는 검색 결과 제목 수집
 def get_visible_search_result_titles(wait):
