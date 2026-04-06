@@ -1,4 +1,5 @@
-﻿import time
+import logging
+import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from urllib.parse import urlparse
@@ -17,6 +18,7 @@ from locators.menu_locators import MENU_TOOLS
 NS = {
     "p": "http://schemas.openxmlformats.org/presentationml/2006/main",
 }
+logger = logging.getLogger(__name__)
 
 
 # 요소가 화면에 표시될 때까지 기다린 뒤 반환하는 헬퍼
@@ -46,21 +48,22 @@ def _type_text(driver, by, value, text):
 def _wait_for_ppt_link(driver, timeout_seconds=600, poll_interval=10):
     for attempt in range(timeout_seconds // poll_interval):
         time.sleep(poll_interval)
+        elapsed_sec = (attempt + 1) * poll_interval
 
         try:
             download_link = driver.find_element(
                 By.XPATH, "//a[contains(., '생성 결과 다운받기')]"
             )
             href = download_link.get_attribute("href")
-            print(f"{(attempt + 1) * poll_interval}초 경과 - 현재 href: {href}")
+            logger.info("ppt_link_poll elapsed_sec=%s href=%s", elapsed_sec, href)
 
             if href and ".pptx" in href:
-                print("PPT 생성 완료")
-                print("다운로드 링크:", href)
+                logger.info("ppt_link_ready href=%s", href)
                 return href
         except Exception:
-            print(f"{(attempt + 1) * poll_interval}초 경과 - 아직 생성 중...")
+            logger.info("ppt_link_poll elapsed_sec=%s status=processing", elapsed_sec)
 
+    logger.error("ppt_link_timeout timeout_seconds=%s", timeout_seconds)
     raise AssertionError("PPT 링크가 제한 시간 내 생성되지 않았습니다.")
 
 
@@ -98,6 +101,13 @@ def _download_with_retry(href, download_dir, retries=5, delay_seconds=3):
 
 # 다운로드된 PPT의 슬라이드 수와 섹션 수를 검증하는 헬퍼
 def _verify_slide_count(ppt_file_path, expected_slide_count, expected_section_count):
+    logger.info(
+        "verify_slide_count_start file=%s expected_slides=%s expected_sections=%s",
+        ppt_file_path,
+        expected_slide_count,
+        expected_section_count,
+    )
+
     with ZipFile(ppt_file_path) as zf:
         presentation_xml = zf.read("ppt/presentation.xml")
 
@@ -110,21 +120,39 @@ def _verify_slide_count(ppt_file_path, expected_slide_count, expected_section_co
         for slide in presentation.slides
         if (slide.slide_layout.name or "").strip().lower() == "section_title"
     )
+    logger.info(
+        "verify_slide_count_actual actual_slides=%s actual_sections=%s",
+        actual_slide_count,
+        actual_section_count,
+    )
 
     errors = []
 
     if actual_slide_count != expected_slide_count:
+        logger.error(
+            "slide_count_mismatch expected=%s actual=%s",
+            expected_slide_count,
+            actual_slide_count,
+        )
         errors.append(
             f"슬라이드 수 불일치: expected={expected_slide_count}, actual={actual_slide_count}"
         )
 
     if actual_section_count != expected_section_count:
+        logger.error(
+            "section_count_mismatch expected=%s actual=%s",
+            expected_section_count,
+            actual_section_count,
+        )
         errors.append(
             f"섹션 수 불일치: expected={expected_section_count}, actual={actual_section_count}"
         )
 
     if errors:
         raise AssertionError("\n".join(errors))
+
+    logger.info("verify_slide_count_pass")
+    return actual_slide_count, actual_section_count
 
 
 # =========================
@@ -139,20 +167,21 @@ def test_ppt_create(logged_in_driver, wait, testlog):
     # ==========
     # Arrange
     # ==========
-    testlog.arrange(
-        "open_ppt_create_tool",
-        expected_slide_count=expected_slide_count,
-        expected_section_count=expected_section_count,
-    )
     # 도구 메뉴에서 PPT 생성 페이지로 진입
     _click(driver, *MENU_TOOLS)
     _click(driver, By.XPATH, "//p[text()='PPT 생성']")
+    testlog.arrange("tool_page_opened")
 
     # 생성 조건 입력
     _type_text(driver, By.NAME, "topic", "이미지 AI의 최신 트렌드와 전망")
     _type_text(driver, By.NAME, "instructions", "2025년 기준으로 만들어줘")
     _type_text(driver, By.NAME, "slides_count", str(expected_slide_count))
     _type_text(driver, By.NAME, "section_count", str(expected_section_count))
+    testlog.arrange(
+        "ppt_form_filled",
+        expected_slide_count=expected_slide_count,
+        expected_section_count=expected_section_count,
+    )
 
     # 심층조사 모드가 선택되어 있으면 해제
     simple_mode_checkbox = driver.find_element(By.NAME, "simple_mode")
@@ -163,11 +192,11 @@ def test_ppt_create(logged_in_driver, wait, testlog):
     # Act
     # ==========
     # 제출 버튼 상태에 따라 생성 또는 다시 생성을 수행
-    testlog.act("submit_ppt_generation_request")
     submit_button = wait.until(
         EC.element_to_be_clickable((By.CSS_SELECTOR, "button[type='submit']"))
     )
     submit_button_text = submit_button.text.strip()
+    testlog.act("submit_generation_clicked", button_text=submit_button_text)
 
     if submit_button_text == "다시 생성":
         submit_button.click()
@@ -185,6 +214,12 @@ def test_ppt_create(logged_in_driver, wait, testlog):
     # ==========
     # 생성 결과 다운로드 링크가 노출되는지 확인
     ppt_link = _wait_for_ppt_link(driver)
+    testlog.assert_(
+        "ppt_link_ready",
+        expected=True,
+        actual=(".pptx" in (ppt_link or "")),
+        href=ppt_link,
+    )
 
     # 결과 파일이 정상적으로 다운로드되는지 확인
     downloaded_ppt = _download_with_retry(
@@ -193,14 +228,21 @@ def test_ppt_create(logged_in_driver, wait, testlog):
     )
 
     # 다운로드된 PPT의 슬라이드 수와 섹션 수가 요청값과 일치하는지 확인
-    _verify_slide_count(
+    actual_slide_count, actual_section_count = _verify_slide_count(
         downloaded_ppt,
         expected_slide_count,
         expected_section_count,
     )
     testlog.assert_(
-        "ppt_download_and_content_verification_success",
+        "ppt_file_verified",
         expected=True,
-        actual=True,
+        actual=(
+            actual_slide_count == expected_slide_count
+            and actual_section_count == expected_section_count
+        ),
         downloaded_ppt=str(downloaded_ppt),
+        expected_slide_count=expected_slide_count,
+        actual_slide_count=actual_slide_count,
+        expected_section_count=expected_section_count,
+        actual_section_count=actual_section_count,
     )
