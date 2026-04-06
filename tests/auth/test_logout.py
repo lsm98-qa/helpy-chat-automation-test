@@ -28,18 +28,20 @@ def _is_protected_page_blocked(driver, wait, base_url):
 # =========================
 # 프로필 메뉴 로그아웃 성공 검증
 # =========================
-def test_logout_success_via_profile_avatar(logged_in_driver, wait, base_url):
+def test_logout_success_via_profile_avatar(logged_in_driver, wait, base_url, testlog):
     # ==========
     # Arrange
     # ==========
     driver = logged_in_driver
     account_menu = AccountMenu(driver, wait)
     wait.until(EC.url_contains("/ai-helpy-chat"))
+    testlog.arrange("logged_in_session_ready", base_url=base_url)
 
     # ==========
     # Act
     # ==========
     # 프로필 메뉴에서 로그아웃 수행
+    testlog.act("logout_via_profile_menu")
     account_menu.logout()
     wait.until(lambda d: _is_login_page(d))
 
@@ -52,7 +54,16 @@ def test_logout_success_via_profile_avatar(logged_in_driver, wait, base_url):
     # ==========
     # Assert
     # ==========
-    assert _is_login_page(driver) and blocked_after_logout and blocked_after_history_navigation, (
+    is_logout_success = _is_login_page(driver) and blocked_after_logout and blocked_after_history_navigation
+    testlog.assert_(
+        "logout_session_blocked",
+        expected=True,
+        actual=is_logout_success,
+        blocked_after_logout=blocked_after_logout,
+        blocked_after_history_navigation=blocked_after_history_navigation,
+        current_url=driver.current_url,
+    )
+    assert is_logout_success, (
         f"로그아웃 이후 세션 차단 검증에 실패했습니다. "
         f"current_url={driver.current_url}, "
         f"blocked_after_logout={blocked_after_logout}, "
