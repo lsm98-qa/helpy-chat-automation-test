@@ -1,66 +1,415 @@
-from selenium.webdriver.support import expected_conditions as EC
+import pytest
 from selenium.webdriver.common.by import By
-from locators.menu_locators import *
-from locators.agent_locators import *
+from selenium.webdriver.support import expected_conditions as EC
+
+from locators.agent_create_locators import (
+    AGENT_CONVERSATION_STARTER_INPUTS,
+    AGENT_CREATE_CHAT_TAB,
+    AGENT_CREATE_FORM_TAB,
+    AGENT_CREATE_TOGGLE_GROUP,
+    AGENT_DESCRIPTION_INPUT,
+    AGENT_FILE_UPLOAD_INPUT,
+    AGENT_FILE_UPLOAD_LABEL,
+    AGENT_IMAGE_PLUS_BUTTON,
+    AGENT_NAME_INPUT,
+    AGENT_PREVIEW_PANEL_TITLE,
+    AGENT_PURPOSE_COMBOBOX,
+    AGENT_PURPOSE_INPUT,
+    AGENT_SYSTEM_PROMPT_INPUT,
+    AGENT_TOOL_CHECKBOXES,
+)
+from locators.agent_locators import AGENT_CREATE_BUTTON
+
+@pytest.fixture
+def navigate_to_agent_create(navigate_to_agent_explore, wait):
+    driver = navigate_to_agent_explore
+    wait.until(EC.element_to_be_clickable(AGENT_CREATE_BUTTON)).click()
+    wait.until(EC.url_contains('/ai-helpy-chat/agents'))
+    wait.until(EC.url_contains('/builder'))
+    return driver
+
 
 # =========================
-# 에이전트 생성 페이지 진입 테스트
+# 에이전트 생성 폼 핵심 요소 렌더링 확인
 # =========================
-def test_navigate_to_agent_create(navigate_to_agent_explore, wait):
+def test_agent_create_form_core_elements_rendered(navigate_to_agent_create, wait, testlog):
     # ==========
     # Arrange
     # ==========
-    driver = navigate_to_agent_explore
+    driver = navigate_to_agent_create
+    testlog.arrange("navigate_to_agent_create_page")
 
     # ==========
     # Act
     # ==========
-    # 새 에이전트 만들기 버튼을 클릭해 생성 페이지로 이동
-    wait.until(EC.element_to_be_clickable(AGENT_CREATE_BUTTON)).click()
-    # 생성 페이지의 제목 노출 여부 확인을 위한 요소 탐색
-    create_title = wait.until(EC.presence_of_element_located((By.XPATH, "//p[text()='새 에이전트 만들기']")))
+    # 에이전트 생성 폼 핵심 요소를 순차적으로 조회
+    # 에이전트 이미지 설정 (+ 버튼)
+    testlog.act("find_agent_create_form_core_elements")
+    plus_button = wait.until(EC.element_to_be_clickable(AGENT_IMAGE_PLUS_BUTTON))
+    name_input = wait.until(EC.visibility_of_element_located(AGENT_NAME_INPUT))
+    description_input = wait.until(EC.visibility_of_element_located(AGENT_DESCRIPTION_INPUT))
+    purpose_combobox = wait.until(EC.visibility_of_element_located(AGENT_PURPOSE_COMBOBOX))
+    purpose_input = wait.until(EC.presence_of_element_located(AGENT_PURPOSE_INPUT))
+    system_prompt_input = wait.until(EC.visibility_of_element_located(AGENT_SYSTEM_PROMPT_INPUT))
+    starter_inputs = wait.until(
+        lambda d: d.find_elements(*AGENT_CONVERSATION_STARTER_INPUTS) or False
+    )
+    file_upload_label = wait.until(EC.visibility_of_element_located(AGENT_FILE_UPLOAD_LABEL))
+    file_input = wait.until(EC.presence_of_element_located(AGENT_FILE_UPLOAD_INPUT))
+
+    expected_tool_values = {
+        "web_search",
+        "web_browsing",
+        "image_generation",
+        "code_execution",
+    }
+    tool_checkboxes = wait.until(
+        lambda d: d.find_elements(*AGENT_TOOL_CHECKBOXES) or False
+    )
+    actual_tool_values = {checkbox.get_attribute("value") for checkbox in tool_checkboxes}
+    preview_panel = wait.until(EC.visibility_of_element_located(AGENT_PREVIEW_PANEL_TITLE))
 
     # ==========
     # Assert
     # ==========
-    assert create_title.text == "새 에이전트 만들기"
+    core_elements_ready = (
+        plus_button.is_displayed()
+        and name_input.is_displayed()
+        and description_input.is_displayed()
+        and purpose_combobox.is_displayed()
+        and system_prompt_input.is_displayed()
+        and preview_panel.is_displayed()
+    )
+    testlog.assert_(
+        "agent_create_form_core_elements_rendered",
+        expected=True,
+        actual=core_elements_ready,
+        starter_count=len(starter_inputs),
+    )
+    assert plus_button.is_displayed(), "에이전트 이미지 설정 '+' 버튼이 화면에 표시되지 않았습니다."
+    assert name_input.is_displayed(), "이름 입력창이 화면에 표시되지 않았습니다."
+    assert name_input.is_enabled(), "이름 입력창이 비활성 상태입니다."
+    assert description_input.is_displayed(), "한줄 소개 입력창이 화면에 표시되지 않았습니다."
+    assert description_input.is_enabled(), "한줄 소개 입력창이 비활성 상태입니다."
+    assert purpose_combobox.is_displayed(), "카테고리 콤보박스가 화면에 표시되지 않았습니다."
+    assert system_prompt_input.is_displayed(), "규칙 입력창이 화면에 표시되지 않았습니다."
+    assert len(starter_inputs) == 1, (
+        f"시작 대화 입력창 개수가 1개가 아닙니다. actual={len(starter_inputs)}"
+    )
+    assert starter_inputs[0].is_displayed(), "시작 대화 입력창(conversationStarters.0.value)이 표시되지 않았습니다."
+    assert starter_inputs[0].get_attribute('name') == 'conversationStarters.0.value', (
+        "시작 대화 입력창 name 값이 예상과 다릅니다. "
+        f"actual={starter_inputs[0].get_attribute('name')}"
+    )
+    assert file_upload_label.is_displayed(), "파일 업로드 라벨 영역이 화면에 표시되지 않았습니다."
+    assert file_input.get_attribute("type") == "file", (
+        "파일 업로드 input 타입이 file이 아닙니다. "
+        f"actual={file_input.get_attribute('type')}"
+    )
+    assert expected_tool_values.issubset(actual_tool_values), (
+        "기능 체크박스 value 구성이 예상과 다릅니다. "
+        f"expected_subset={sorted(expected_tool_values)}, actual={sorted(actual_tool_values)}"
+    )
+    assert preview_panel.is_displayed(), "우측 미리보기 패널이 화면에 표시되지 않았습니다."
+
+# 에이전트 생성 토글의 상태를 기대값(chat/form)과 비교 검증하는 공통 헬퍼
+def _assert_agent_create_tab_pressed_state(wait, chat_expected, form_expected):
+    chat_expected_str = "true" if chat_expected else "false"
+    form_expected_str = "true" if form_expected else "false"
+
+    wait.until(lambda d: d.find_element(*AGENT_CREATE_CHAT_TAB).get_attribute("aria-pressed") == chat_expected_str)
+    wait.until(lambda d: d.find_element(*AGENT_CREATE_FORM_TAB).get_attribute("aria-pressed") == form_expected_str)
+
+    chat_actual = wait.until(EC.presence_of_element_located(AGENT_CREATE_CHAT_TAB)).get_attribute("aria-pressed")
+    form_actual = wait.until(EC.presence_of_element_located(AGENT_CREATE_FORM_TAB)).get_attribute("aria-pressed")
+
+    assert chat_actual == chat_expected_str, (
+        f"chat 탭 aria-pressed 상태가 예상과 다릅니다. expected={chat_expected_str}, actual={chat_actual}"
+    )
+    assert form_actual == form_expected_str, (
+        f"form 탭 aria-pressed 상태가 예상과 다릅니다. expected={form_expected_str}, actual={form_actual}"
+    )
+
+# 생성 버튼이 비활성 상태인지 공통 기준으로 확인하는 헬퍼
+def _is_create_button_disabled(button):
+    class_name = button.get_attribute("class") or ""
+    return (
+        (not button.is_enabled())
+        or (button.get_attribute("disabled") is not None)
+        or (button.get_attribute("aria-disabled") == "true")
+        or ("Mui-disabled" in class_name)
+    )
+
+
+# 생성 버튼이 활성 상태인지 공통 기준으로 확인하는 헬퍼
+def _is_create_button_enabled(button):
+    class_name = button.get_attribute("class") or ""
+    return (
+        button.is_enabled()
+        and (button.get_attribute("disabled") is None)
+        and (button.get_attribute("aria-disabled") != "true")
+        and ("Mui-disabled" not in class_name)
+    )
+
 
 # =========================
-# 에이전트 탐색 -> 에이전트 만들기 페이지에서 뒤로가기 버튼 테스트
+# 생성 페이지 토글 탭 초기 상태 확인
 # =========================
-def test_navigate_back_to_agent_explore(navigate_to_agent_explore, wait):
+def test_agent_create_tabs_initial_state(navigate_to_agent_create, wait, testlog):
     # ==========
     # Arrange
     # ==========
-    driver = navigate_to_agent_explore
-    wait.until(EC.element_to_be_clickable(AGENT_CREATE_BUTTON)).click()
-    
+    _ = navigate_to_agent_create
+    testlog.arrange("navigate_to_agent_create_for_tab_initial_state")
+    group = wait.until(EC.visibility_of_element_located(AGENT_CREATE_TOGGLE_GROUP))
+    chat_tab = wait.until(EC.element_to_be_clickable(AGENT_CREATE_CHAT_TAB))
+    settings_tab = wait.until(EC.element_to_be_clickable(AGENT_CREATE_FORM_TAB))
+
     # ==========
     # Act
     # ==========
-    # 뒤로가기 버튼을 눌러 에이전트 탐색 페이지로 복귀
-    wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "button[aria-label='뒤로가기']"))).click()
-    wait.until(EC.url_contains("/ai-helpy-chat/agents"))
-    
+    # 초기 선택 상태 값을 읽어 단일 선택 여부 검증에 사용
+    testlog.act("read_initial_tab_pressed_state")
+    initial_chat_pressed = chat_tab.get_attribute("aria-pressed")
+    initial_form_pressed = settings_tab.get_attribute("aria-pressed")
+
     # ==========
     # Assert
     # ==========
-    agent_title = wait.until(EC.visibility_of_element_located(MENU_H2_TITLE))
+    is_single_selected = (initial_chat_pressed == "true") != (initial_form_pressed == "true")
+    testlog.assert_(
+        "agent_create_tab_initial_state_valid",
+        expected=True,
+        actual=is_single_selected,
+        chat_pressed=initial_chat_pressed,
+        form_pressed=initial_form_pressed,
+    )
+    assert group.is_displayed(), "대화/설정 토글 그룹이 화면에 표시되지 않았습니다."
+    assert chat_tab.is_displayed() and chat_tab.is_enabled(), "chat 탭이 표시/활성 상태가 아닙니다."
+    assert settings_tab.is_displayed() and settings_tab.is_enabled(), "form 탭이 표시/활성 상태가 아닙니다."
+    assert chat_tab.get_attribute("value") == "chat", (
+        f"chat 탭 value가 예상과 다릅니다. actual={chat_tab.get_attribute('value')}"
+    )
+    assert settings_tab.get_attribute("value") == "form", (
+        f"form 탭 value가 예상과 다릅니다. actual={settings_tab.get_attribute('value')}"
+    )
+    assert (initial_chat_pressed == "true") != (initial_form_pressed == "true"), (
+        "초기 상태에서 chat/form 중 정확히 1개만 선택되어야 합니다. "
+        f"chat={initial_chat_pressed}, form={initial_form_pressed}"
+    )
 
-    assert agent_title.text == "에이전트 탐색"
+
+# =========================
+# 생성 페이지 토글 탭 전환 동작 확인
+# =========================
+def test_agent_create_tabs_switch_clickable(navigate_to_agent_create, wait, testlog):
+    # ==========
+    # Arrange
+    # ==========
+    _ = navigate_to_agent_create
+    testlog.arrange("navigate_to_agent_create_for_tab_switch")
+    chat_tab = wait.until(EC.element_to_be_clickable(AGENT_CREATE_CHAT_TAB))
+    settings_tab = wait.until(EC.element_to_be_clickable(AGENT_CREATE_FORM_TAB))
+    assert chat_tab.is_enabled(), "chat 탭이 클릭 가능한 상태가 아닙니다."
+    assert settings_tab.is_enabled(), "form 탭이 클릭 가능한 상태가 아닙니다."
+
+    # ==========
+    # Act
+    # ==========
+    # chat 탭 클릭 후 form 탭으로 다시 전환
+    testlog.act("switch_tabs_chat_to_form")
+    chat_tab.click()
+    _assert_agent_create_tab_pressed_state(wait, chat_expected=True, form_expected=False)
+    wait.until(EC.element_to_be_clickable(AGENT_CREATE_FORM_TAB)).click()
+
+    # ==========
+    # Assert
+    # ==========
+    testlog.assert_("agent_create_tab_switch_completed", expected=True, actual=True)
+    _assert_agent_create_tab_pressed_state(wait, chat_expected=False, form_expected=True)
 
 
-# def test_register_form_is_visible():
-#     pass
-# def test_register_required_toggles_are_present():
-#     pass
-# def test_register_toggles_are_interactable():
-#     pass
-# def test_register_image_upload_button_is_enabled():
-#     pass
-# def test_register_singleline_input_is_editable():
-#     pass
-# def test_register_multiline_input_is_editable():
-#     pass
-# def test_register_required_fields_are_rendered():
-#     pass
+# =========================
+# 필수 입력 필드의 입력 가능 여부 확인
+# =========================
+@pytest.mark.parametrize(
+    "locator, test_value",
+    [
+        pytest.param(AGENT_NAME_INPUT, "qa_name_editable_check", id="name_input"),
+        pytest.param(AGENT_SYSTEM_PROMPT_INPUT, "qa_system_prompt_editable_check", id="system_prompt_input"),
+    ],
+)
+def test_agent_create_name_input_editable(navigate_to_agent_create, wait, locator, test_value, testlog):
+    # ==========
+    # Arrange
+    # ==========
+    _ = navigate_to_agent_create
+    testlog.arrange("navigate_to_agent_create_for_input_edit", locator=str(locator), test_value=test_value)
+
+    element = wait.until(EC.visibility_of_element_located(locator))
+    assert element.is_enabled(), f"필수 입력 필드가 비활성 상태입니다. locator={locator}"
+    assert element.get_attribute("readonly") is None, f"필수 입력 필드가 readonly 상태입니다. locator={locator}"
+
+    # ==========
+    # Act
+    # ==========
+    # 입력값 초기화 후 테스트 값 입력
+    testlog.act("clear_and_type_required_input")
+    element.clear()
+    element.send_keys(test_value)
+
+    # ==========
+    # Assert
+    # ==========
+    is_value_applied = element.get_attribute("value") == test_value
+    testlog.assert_(
+        "required_input_value_applied",
+        expected=test_value,
+        actual=element.get_attribute("value"),
+        success=is_value_applied,
+    )
+    assert element.get_attribute("value") == test_value, (
+        "필수 입력 필드에 입력한 값이 반영되지 않았습니다. "
+        f"locator={locator}, expected={test_value}, actual={element.get_attribute('value')}"
+    )
+
+
+# =========================
+# 필수값 공백일 때 생성 버튼 비활성 확인
+# =========================
+def test_agent_create_submit_button_disabled_when_required_fields_empty(navigate_to_agent_create, wait, testlog):
+    # ==========
+    # Arrange
+    # ==========
+    # 필수값 입력 필드와 만들기 버튼을 조회
+    _ = navigate_to_agent_create
+    testlog.arrange("navigate_to_agent_create_for_submit_disabled_check")
+    create_button_locator = (By.XPATH, "//button[normalize-space()='만들기']")
+    name_input = wait.until(EC.visibility_of_element_located(AGENT_NAME_INPUT))
+    system_prompt_input = wait.until(EC.visibility_of_element_located(AGENT_SYSTEM_PROMPT_INPUT))
+    wait.until(EC.presence_of_element_located(create_button_locator))
+
+    # ==========
+    # Act
+    # ==========
+    # 필수 입력값을 비워 제출 불가능 상태로 전환
+    testlog.act("clear_required_fields")
+    name_input.clear()
+    system_prompt_input.clear()
+    wait.until(lambda d: (name_input.get_attribute("value") or "") == "")
+    wait.until(lambda d: (system_prompt_input.get_attribute("value") or "") == "")
+
+    # ==========
+    # Assert
+    # ==========
+    wait.until(lambda d: _is_create_button_disabled(d.find_element(*create_button_locator)))
+
+    create_button = wait.until(EC.presence_of_element_located(create_button_locator))
+    is_disabled = _is_create_button_disabled(create_button)
+    testlog.assert_("create_button_disabled_when_required_empty", expected=True, actual=is_disabled)
+    assert _is_create_button_disabled(create_button), '"만들기" 버튼이 비활성 상태가 아닙니다.'
+
+
+# =========================
+# 필수값 입력 시 생성 버튼 활성 전환 확인
+# =========================
+def test_agent_create_submit_button_enabled_when_required_fields_filled(navigate_to_agent_create, wait, testlog):
+    # ==========
+    # Arrange
+    # ==========
+    driver = navigate_to_agent_create
+    testlog.arrange("navigate_to_agent_create_for_submit_enabled_check")
+    create_button_locator = (By.XPATH, "//button[normalize-space()='만들기']")
+    name_input = wait.until(EC.visibility_of_element_located(AGENT_NAME_INPUT))
+    system_prompt_input = wait.until(EC.visibility_of_element_located(AGENT_SYSTEM_PROMPT_INPUT))
+    wait.until(EC.presence_of_element_located(create_button_locator))
+
+    # ==========
+    # Act
+    # ==========
+    # 필수값을 먼저 비운 뒤 유효한 값을 입력
+    testlog.act("fill_required_fields_with_valid_values")
+    name_input.clear()
+    system_prompt_input.clear()
+    wait.until(lambda d: (name_input.get_attribute("value") or "") == "")
+    wait.until(lambda d: (system_prompt_input.get_attribute("value") or "") == "")
+    wait.until(lambda d: _is_create_button_disabled(d.find_element(*create_button_locator)))
+
+    name_input.send_keys("qa_submit_enable_name")
+    system_prompt_input.send_keys("qa_submit_enable_system_prompt")
+    wait.until(lambda d: (name_input.get_attribute("value") or "") == "qa_submit_enable_name")
+    wait.until(lambda d: (system_prompt_input.get_attribute("value") or "") == "qa_submit_enable_system_prompt")
+    
+    # 마지막 입력 필드 blur로 상태 갱신을 유도
+    driver.execute_script("arguments[0].blur();", system_prompt_input)
+
+    # ==========
+    # Assert
+    # ==========
+    wait.until(
+        lambda d: _is_create_button_enabled(d.find_element(*create_button_locator))
+    )
+
+    create_button = wait.until(EC.presence_of_element_located(create_button_locator))
+    is_enabled = _is_create_button_enabled(create_button)
+    testlog.assert_("create_button_enabled_when_required_filled", expected=True, actual=is_enabled)
+    assert _is_create_button_enabled(create_button), '"만들기" 버튼이 활성 상태로 전환되지 않았습니다.'
+
+
+# =========================
+# 에이전트 생성 성공 토스트 노출 확인
+# =========================
+def test_agent_create_shows_success_toast(navigate_to_agent_create, wait, testlog):
+    from uuid import uuid4
+
+    # ==========
+    # Arrange
+    # ==========
+    driver = navigate_to_agent_create
+    create_button_locator = (By.XPATH, "//button[normalize-space()='만들기']")
+    publish_modal_locator = (
+        By.XPATH,
+        "//div[@role='dialog' and .//form[@id='publish-setting-form']]",
+    )
+    publish_modal_save_button_locator = (
+        By.XPATH,
+        "//div[@role='dialog' and .//form[@id='publish-setting-form']]//button[@type='submit' and @form='publish-setting-form']",
+    )
+
+    # 랜덤한 에이전트 이름 생성
+    unique_agent_name = f"qa-agent-{uuid4().hex[:8]}"
+    testlog.arrange("prepare_agent_create_form_values", unique_agent_name=unique_agent_name)
+
+    name_input = wait.until(EC.visibility_of_element_located(AGENT_NAME_INPUT))
+    system_prompt_input = wait.until(EC.visibility_of_element_located(AGENT_SYSTEM_PROMPT_INPUT))
+
+    name_input.clear()
+    name_input.send_keys(unique_agent_name)
+    system_prompt_input.clear()
+    system_prompt_input.send_keys("You are a helpful assistant.")
+
+    driver.execute_script("arguments[0].blur();", system_prompt_input)
+
+    wait.until(lambda d: _is_create_button_enabled(d.find_element(*create_button_locator)))
+
+    # ==========
+    # Act
+    # ==========
+    # 만들기 클릭 후 공개 설정 모달에서 저장
+    testlog.act("submit_create_agent_and_save_publish_settings")
+    wait.until(EC.element_to_be_clickable(create_button_locator)).click()
+    wait.until(EC.visibility_of_element_located(publish_modal_locator))
+    wait.until(EC.element_to_be_clickable(publish_modal_save_button_locator)).click()
+
+    # ==========
+    # Assert
+    # ==========
+    testlog.assert_("agent_create_success_toast_visible", expected=True, actual=True)
+    wait.until(
+        EC.visibility_of_element_located(
+            (
+                By.XPATH,
+                "//*[@role='alert' and (contains(@class, 'notistack-MuiContent-success') or .//*[@data-testid='circle-checkIcon'])]",
+            )
+        )
+    )

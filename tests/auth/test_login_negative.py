@@ -168,16 +168,25 @@ def test_login_negative_client_side_validation(
     expected_text_error,
     allow_html5_email_msg,
     allow_html5_password_msg,
+    testlog,
 ):
     # ==========
     # Arrange
     # ==========
     _open_login_page(driver, wait, login_url)
+    testlog.arrange(
+        "open_login_with_invalid_inputs",
+        email=email,
+        expected_text_error=expected_text_error,
+        allow_html5_email_msg=allow_html5_email_msg,
+        allow_html5_password_msg=allow_html5_password_msg,
+    )
 
     # ==========
     # Act
     # ==========
     # 비정상 입력으로 로그인 시도 후 관찰값 수집
+    testlog.act("submit_invalid_credentials")
     observed = _submit_and_observe(driver, wait, email=email, password=password)
     _assert_failed_login_without_stuck_ui(driver, wait, base_url)
 
@@ -188,7 +197,16 @@ def test_login_negative_client_side_validation(
     # ==========
     # Assert
     # ==========
-    assert has_text_error or has_html5_email_error or has_html5_password_error, (
+    is_error_visible = has_text_error or has_html5_email_error or has_html5_password_error
+    testlog.assert_(
+        "client_side_validation_error_visible",
+        expected=True,
+        actual=is_error_visible,
+        observed_errors=observed["errors"],
+        email_validation_message=observed["email_validation_message"],
+        password_validation_message=observed["password_validation_message"],
+    )
+    assert is_error_visible, (
         "클라이언트 입력 검증 에러 메시지를 확인하지 못했습니다. "
         f"errors={observed['errors']}, "
         f"email_validation_message='{observed['email_validation_message']}', "
@@ -199,17 +217,19 @@ def test_login_negative_client_side_validation(
 # =========================
 # 미존재 계정 로그인 실패 메시지 노출 검증
 # =========================
-def test_login_negative_non_existing_account(driver, wait, base_url, login_url):
+def test_login_negative_non_existing_account(driver, wait, base_url, login_url, testlog):
     # ==========
     # Arrange
     # ==========
     _open_login_page(driver, wait, login_url)
     non_existing_email = f"autotest-non-existing-{uuid.uuid4().hex[:10]}@example.invalid"
+    testlog.arrange("open_login_with_non_existing_account", email=non_existing_email)
 
     # ==========
     # Act
     # ==========
     # 존재하지 않는 계정으로 로그인 시도
+    testlog.act("submit_non_existing_account")
     observed = _submit_and_observe(driver, wait, email=non_existing_email, password="AnyWrongPass123!")
     _assert_failed_login_without_stuck_ui(driver, wait, base_url)
 
@@ -218,7 +238,14 @@ def test_login_negative_non_existing_account(driver, wait, base_url, login_url):
     # ==========
     has_invalid_credentials = _contains_message(observed["errors"], INVALID_CREDENTIALS_MESSAGE)
     has_temp_system_error = _contains_message(observed["errors"], TEMP_SYSTEM_ERROR_MESSAGE)
-    assert has_invalid_credentials or has_temp_system_error, (
+    is_expected_error_visible = has_invalid_credentials or has_temp_system_error
+    testlog.assert_(
+        "non_existing_account_error_visible",
+        expected=True,
+        actual=is_expected_error_visible,
+        observed_errors=observed["errors"],
+    )
+    assert is_expected_error_visible, (
         "존재하지 않는 계정 시 기대 메시지(인증 실패/임시 시스템 오류)를 찾지 못했습니다. "
         f"errors={observed['errors']}"
     )
@@ -227,7 +254,7 @@ def test_login_negative_non_existing_account(driver, wait, base_url, login_url):
 # =========================
 # 정상 이메일 + 오입력 비밀번호 실패 메시지 검증
 # =========================
-def test_login_negative_wrong_password(driver, wait, base_url, login_url):
+def test_login_negative_wrong_password(driver, wait, base_url, login_url, testlog):
     # ==========
     # Arrange
     # ==========
@@ -235,18 +262,27 @@ def test_login_negative_wrong_password(driver, wait, base_url, login_url):
     if not account_email:
         pytest.skip("ACCOUNT_EMAIL 환경변수가 없어 정상 이메일 + 틀린 비밀번호 시나리오를 건너뜁니다.")
     _open_login_page(driver, wait, login_url)
+    testlog.arrange("open_login_with_wrong_password", email=account_email)
 
     # ==========
     # Act
     # ==========
     # 정상 이메일과 틀린 비밀번호 조합으로 로그인 시도
+    testlog.act("submit_wrong_password")
     observed = _submit_and_observe(driver, wait, email=account_email, password="WrongPassword!234")
     _assert_failed_login_without_stuck_ui(driver, wait, base_url)
 
     # ==========
     # Assert
     # ==========
-    assert _contains_message(observed["errors"], INVALID_CREDENTIALS_MESSAGE), (
+    has_invalid_credentials = _contains_message(observed["errors"], INVALID_CREDENTIALS_MESSAGE)
+    testlog.assert_(
+        "wrong_password_error_visible",
+        expected=True,
+        actual=has_invalid_credentials,
+        observed_errors=observed["errors"],
+    )
+    assert has_invalid_credentials, (
         "비밀번호 불일치/인증 실패 메시지를 찾지 못했습니다. "
         f"errors={observed['errors']}"
     )

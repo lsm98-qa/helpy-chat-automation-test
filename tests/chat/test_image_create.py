@@ -8,17 +8,19 @@ from pages.chat_actions import click_new_chat
 # =========================
 # 대화의 이미지 생성 기능을 사용했을 때 이미지 정상 출력 여부 검증
 # =========================
-def test_chat_generates_and_displays_image(logged_in_driver, wait):
+def test_chat_generates_and_displays_image(logged_in_driver, wait, testlog):
     #==========
     # Arrange
     #==========
     # 로그인
     driver = logged_in_driver
+    testlog.arrange("logged_in_driver_ready", prompt="강아지 이미지 생성해줘")
 
 
     #==========
     # Act
     #==========
+    testlog.act("request_image_generation")
 
     # 새 대화 시작
     click_new_chat(wait)
@@ -57,7 +59,7 @@ def test_chat_generates_and_displays_image(logged_in_driver, wait):
     #==========
     # 생성된 이미지가 표시되는지 확인
     wait_image = WebDriverWait(driver, 60)
-    assert wait_image.until(
+    has_generated_image = wait_image.until(
         lambda d: len(
             d.execute_script(
                 """
@@ -67,4 +69,10 @@ def test_chat_generates_and_displays_image(logged_in_driver, wait):
             )
         )
         > 0
-    ), "이미지 파일이 생성되지 않았습니다."
+    )
+    testlog.assert_(
+        "generated_image_is_visible",
+        expected=True,
+        actual=has_generated_image,
+    )
+    assert has_generated_image, "이미지 파일이 생성되지 않았습니다."

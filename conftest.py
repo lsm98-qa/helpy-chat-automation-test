@@ -1,4 +1,9 @@
-﻿import pytest
+﻿import logging
+from datetime import datetime
+from pathlib import Path
+import pytest_html
+import re
+import pytest
 import os
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -53,7 +58,7 @@ def driver(pytestconfig: pytest.Config):
 
     chrome_service = Service()
     browser = webdriver.Chrome(service=chrome_service, options=options)
-    browser.implicitly_wait(3)
+    # browser.implicitly_wait(3)
 
     yield browser
 
@@ -88,3 +93,124 @@ def logged_in_driver(driver, wait, login_url):
 
     yield driver
 
+# ===================
+# 로그 설정
+# ===================
+logger = logging.getLogger(__name__)
+
+
+def pytest_configure(config):
+    # 외부 라이브러리 디버그 로그 노이즈를 줄여 테스트 로그 가독성을 높인다.
+    logging.getLogger("selenium").setLevel(logging.WARNING)
+    logging.getLogger("selenium.webdriver.common.selenium_manager").setLevel(logging.ERROR)
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
+
+
+class TestLog:
+    def __init__(self, logger_obj: logging.Logger, nodeid: str):
+        self._logger = logger_obj
+        self._nodeid = nodeid
+
+    def arrange(self, msg: str, **kwargs):
+        self._logger.info(
+            "[ARRANGE] nodeid=%s msg=%s %s",
+            self._nodeid,
+            msg,
+            self._format_kv(kwargs),
+        )
+
+    def act(self, msg: str, **kwargs):
+        self._logger.info(
+            "[ACT] nodeid=%s msg=%s %s",
+            self._nodeid,
+            msg,
+            self._format_kv(kwargs),
+        )
+
+    def assert_(self, msg: str, expected=None, actual=None, **kwargs):
+        self._logger.info(
+            "[ASSERT] nodeid=%s msg=%s expected=%r actual=%r %s",
+            self._nodeid,
+            msg,
+            expected,
+            actual,
+            self._format_kv(kwargs),
+        )
+
+    @staticmethod
+    def _format_kv(values: dict) -> str:
+        if not values:
+            return ""
+        return " ".join(f"{k}={v!r}" for k, v in values.items())
+
+
+@pytest.fixture
+def testlog(request):
+    test_logger = logging.getLogger("test.aaa")
+    return TestLog(test_logger, request.node.nodeid)
+
+
+def _safe_filename(text: str, max_len: int = 120) -> str:
+    # Windows 금지 문자 및 제어문자를 치환해 파일명 저장 실패를 방지
+    safe = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", text)
+    safe = safe.strip().rstrip(". ")
+    if not safe:
+        safe = "test"
+    return safe[:max_len]
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    outcome = yield
+    report = outcome.get_result()
+    setattr(item, f"rep_{report.when}", report)
+
+    if not report.failed:
+        return
+
+    failed_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    logger.error("=" * 80)
+    logger.error(f"테스트 실패: {item.name} (phase={report.when})")
+    logger.error(f"실패 시각: {failed_at}")
+
+    driver = item.funcargs.get("driver")
+
+    if driver:
+        try:
+            logger.error(f"현재 URL: {driver.current_url}")
+        except Exception as e:
+            logger.error(f"현재 URL 조회 실패: {e}")
+
+        try:
+            screenshot_dir = Path("artifacts/screenshots")
+            screenshot_dir.mkdir(parents=True, exist_ok=True)
+
+            safe_item_name = _safe_filename(item.name)
+            screenshot_path = screenshot_dir / f"{safe_item_name}_{report.when}_{timestamp}.png"
+            is_saved = driver.save_screenshot(str(screenshot_path))
+            if is_saved and screenshot_path.exists():
+                logger.error(f"스크린샷 저장: {screenshot_path}")
+            else:
+                logger.error(
+                    f"스크린샷 저장 실패: WebDriver가 False를 반환했습니다. path={screenshot_path}"
+                )
+
+            # pytest-html 리포트에 실패 시점 스크린샷을 직접 첨부
+            screenshot_base64 = driver.get_screenshot_as_base64()
+            extras = getattr(report, "extras", [])
+            extras.append(
+                pytest_html.extras.png(
+                    screenshot_base64, name=f"failure-screenshot-{report.when}"
+                )
+            )
+            report.extras = extras
+            logger.error("HTML 리포트에 스크린샷 첨부 완료")
+        except Exception as e:
+            logger.error(f"스크린샷 저장 실패: {e}")
+    else:
+        logger.error("driver fixture를 찾지 못했습니다.")
+
+    logger.error("실패 상세:")
+    logger.error(report.longrepr)
+    logger.error("=" * 80)

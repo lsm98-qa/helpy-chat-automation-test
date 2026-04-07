@@ -3,13 +3,9 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from tests.tools.spec_detail.assert_messages import (
-    GRADE_NOT_SAVED,
     NAME_INPUT_AREA_NOT_DISPLAYED,
     SCHOOL_LEVEL_NOT_SAVED,
-    SUBJECT_NOT_SAVED,
-    UNIT_NOT_SAVED,
 )
-from tests.tools.spec_detail.input_values import SUBJECT_INPUT, UNIT_INPUT
 
 
 # 요소가 화면에 표시될 때까지 기다린 뒤 반환하는 헬퍼
@@ -63,78 +59,59 @@ def _reset_input_history_if_exists(driver):
 
 
 # =========================
-# 세부 특기사항 생성 후 학생 이름 입력 화면으로 정상 진입하는지 검증
+# 행동특성 및 종합의견에서 학교급 선택 후 학생 정보 입력 화면으로 정상 진입하는지 검증
 # =========================
-def test_spec_create(logged_in_driver, testlog):
+def test_behavior_create(logged_in_driver, testlog):
     driver = logged_in_driver
 
     # ==========
     # Arrange
     # ==========
-    testlog.arrange("open_spec_detail_tool", school_level="중학교", grade="3학년", subject="국어")
-    # 도구 메뉴에서 세부 특기사항 페이지로 진입
+    testlog.arrange("open_behavior_create_tool")
+    # 도구 메뉴에서 행동특성 및 종합의견 페이지로 진입
     _click(driver, By.XPATH, "//span[text()='도구']")
-    _click(driver, By.XPATH, "//p[text()='세부 특기사항']")
+    _click(driver, By.XPATH, "//p[text()='행동특성 및 종합의견']")
 
     # 기존 입력 내역이 있으면 초기화
     _reset_input_history_if_exists(driver)
 
     # 학교급 선택
     _click(driver, By.XPATH, "//label[text()='학교급']/following::div[1]")
-    _click(driver, By.XPATH, "//li[normalize-space()='중학교']")
-
-    # 학년 선택
-    _click(driver, By.XPATH, "//label[text()='학년']/following::div[1]")
-    _click(driver, By.XPATH, "//li[normalize-space()='3학년']")
-
-    # 과목 입력 및 선택
-    _type_text(
-        driver,
-        By.XPATH,
-        "//input[@placeholder='과목을 선택해주세요. (직접 입력 가능)']",
-        SUBJECT_INPUT,
-    )
-    _click(driver, By.XPATH, "//li[normalize-space()='국어']")
-
-    # 단원 입력
-    _type_text(
-        driver,
-        By.XPATH,
-        "//input[@placeholder='수업 단원을 입력해주세요.']",
-        UNIT_INPUT,
-    )
+    _click(driver, By.XPATH, "//li[normalize-space()='초등학교']")
 
     # ==========
     # Act
     # ==========
     # 다음으로 버튼을 클릭
-    testlog.act("submit_spec_detail_form")
-    _click(
+    testlog.act("select_school_level_and_move_next")
+    _click(driver, By.XPATH, "//button[@type='submit' and contains(., '다음으로')]")
+
+    # 학생 정보 입력 화면이 나타날 때까지 대기
+    name_input_area = _find(
         driver,
         By.XPATH,
-        "//button[@type='submit' and contains(., '다음으로')]",
+        "//input[@placeholder='학생 이름 검색']",
     )
 
-    # 학생 이름 입력 화면이 나타날 때까지 대기
-    name_input_area = _find(driver, By.XPATH, "//p[text()='이름을 입력해주세요.']")
-
-    # 디버깅용 스크린샷 저장
-    driver.save_screenshot("result.png")
-    print("스크린샷 저장 완료 (result.png)")
+    # 학교급 정보가 저장되어 표시되는지 확인하기 위한 요소 대기
+    school_level_area = _find(
+        driver,
+        By.XPATH,
+        "//p[normalize-space()='학교급']/following::h6[normalize-space()='초등학교'][1]",
+    )
 
     # ==========
     # Assert
     # ==========
-    # 학생 이름 입력 화면이 정상적으로 표시되는지 확인
+    # 학생 정보 입력 화면이 정상적으로 표시되는지 확인
     testlog.assert_(
-        "spec_detail_student_info_step_visible",
+        "behavior_create_step_navigation_success",
         expected=True,
-        actual=name_input_area.is_displayed(),
+        actual=(name_input_area.is_displayed() and school_level_area.is_displayed()),
     )
     assert name_input_area.is_displayed(), NAME_INPUT_AREA_NOT_DISPLAYED
 
-    # 이전 단계에서 입력한 값이 정상적으로 유지되는지 확인
-    assert _find(driver, By.XPATH, "//h6[normalize-space()='중학교']").is_displayed(), SCHOOL_LEVEL_NOT_SAVED
-    assert _find(driver, By.XPATH, "//h6[normalize-space()='3학년']").is_displayed(), GRADE_NOT_SAVED
-    assert _find(driver, By.XPATH, "//h6[normalize-space()='국어']").is_displayed(), SUBJECT_NOT_SAVED
-    assert _find(driver, By.XPATH, "//h6[normalize-space()='1단원 : 문학작품감상']").is_displayed(), UNIT_NOT_SAVED
+    # 이전 단계에서 선택한 학교급이 정상적으로 유지되는지 확인
+    assert school_level_area.is_displayed(), SCHOOL_LEVEL_NOT_SAVED
+
+    print("PASS: 행동특성 및 종합의견 - 학교급 저장 확인 완료")

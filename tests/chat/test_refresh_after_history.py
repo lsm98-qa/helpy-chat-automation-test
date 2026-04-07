@@ -2,24 +2,25 @@
 from pages.chat_actions import click_new_chat, send_chat_message
 
 
-def test_chat_message_persists_after_refresh(logged_in_driver, wait):
+def test_chat_message_persists_after_refresh(logged_in_driver, wait, testlog):
     #==========
     # Arrange
     #==========
     # 로그인
     driver = logged_in_driver
+    first_chat = "안녕하세요"
+    testlog.arrange("logged_in_driver_ready", message=first_chat)
 
     #==========
     # Act
     #==========
     # 새 대화 시작
+    testlog.act("send_message_and_refresh_page")
     click_new_chat(wait)
 
     # 현재 응답 메시지 개수 확인
     AI_MESSAGE_TEXTS = (By.CSS_SELECTOR, "div[data-status='complete'].elice-aichat__markdown p")
     before_count = len(driver.find_elements(*AI_MESSAGE_TEXTS))
-
-    first_chat = "안녕하세요"
 
     # 대화 전송
     send_chat_message(wait, first_chat)
@@ -44,4 +45,10 @@ def test_chat_message_persists_after_refresh(logged_in_driver, wait):
     )
 
     after_refresh = driver.find_elements(*AI_MESSAGE_TEXTS)[-1].text
-    assert before_refresh == after_refresh, "새로고침 전과 채팅이 동일하지 않습니다."
+    is_persisted = before_refresh == after_refresh
+    testlog.assert_(
+        "chat_message_persisted_after_refresh",
+        expected=True,
+        actual=is_persisted,
+    )
+    assert is_persisted, "새로고침 전과 채팅이 동일하지 않습니다."

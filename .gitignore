@@ -23,3 +23,7 @@ Thumbs.db
 
 # downloaded PPT 파일 (테스트 결과)
 downloads/
+
+# artifacts
+artifacts/
+result.png

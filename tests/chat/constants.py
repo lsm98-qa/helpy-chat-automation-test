@@ -4,3 +4,9 @@ GREETING_REPLY_TEST_CASES = (
     (FIRST_CHAT_GREETING, GREETING_REPLY_KEYWORDS),
     ("너 뭐 할 수 있어?", ("Helpy Assistant", "일반 어시스턴트", "Presentation Agent", "프레젠테이션 전문가", "프레젠테이션", "연결")),
 )
+
+SEARCH_KEYWORD_TEST_CASES = (
+    (" ", "공백만 입력"),
+    ("A", "문자열만 입력"),
+    ("A ", "문자열+공백 입력"),
+)
