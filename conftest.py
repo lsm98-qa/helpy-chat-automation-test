@@ -99,6 +99,57 @@ def logged_in_driver(driver, wait, login_url):
 logger = logging.getLogger(__name__)
 
 
+def pytest_configure(config):
+    # 외부 라이브러리 디버그 로그 노이즈를 줄여 테스트 로그 가독성을 높인다.
+    logging.getLogger("selenium").setLevel(logging.WARNING)
+    logging.getLogger("selenium.webdriver.common.selenium_manager").setLevel(logging.ERROR)
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
+
+
+class TestLog:
+    def __init__(self, logger_obj: logging.Logger, nodeid: str):
+        self._logger = logger_obj
+        self._nodeid = nodeid
+
+    def arrange(self, msg: str, **kwargs):
+        self._logger.info(
+            "[ARRANGE] nodeid=%s msg=%s %s",
+            self._nodeid,
+            msg,
+            self._format_kv(kwargs),
+        )
+
+    def act(self, msg: str, **kwargs):
+        self._logger.info(
+            "[ACT] nodeid=%s msg=%s %s",
+            self._nodeid,
+            msg,
+            self._format_kv(kwargs),
+        )
+
+    def assert_(self, msg: str, expected=None, actual=None, **kwargs):
+        self._logger.info(
+            "[ASSERT] nodeid=%s msg=%s expected=%r actual=%r %s",
+            self._nodeid,
+            msg,
+            expected,
+            actual,
+            self._format_kv(kwargs),
+        )
+
+    @staticmethod
+    def _format_kv(values: dict) -> str:
+        if not values:
+            return ""
+        return " ".join(f"{k}={v!r}" for k, v in values.items())
+
+
+@pytest.fixture
+def testlog(request):
+    test_logger = logging.getLogger("test.aaa")
+    return TestLog(test_logger, request.node.nodeid)
+
+
 def _safe_filename(text: str, max_len: int = 120) -> str:
     # Windows 금지 문자 및 제어문자를 치환해 파일명 저장 실패를 방지
     safe = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", text)

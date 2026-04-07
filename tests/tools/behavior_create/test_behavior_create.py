@@ -61,12 +61,13 @@ def _reset_input_history_if_exists(driver):
 # =========================
 # 행동특성 및 종합의견에서 학교급 선택 후 학생 정보 입력 화면으로 정상 진입하는지 검증
 # =========================
-def test_behavior_create(logged_in_driver):
+def test_behavior_create(logged_in_driver, testlog):
     driver = logged_in_driver
 
     # ==========
     # Arrange
     # ==========
+    testlog.arrange("open_behavior_create_tool")
     # 도구 메뉴에서 행동특성 및 종합의견 페이지로 진입
     _click(driver, By.XPATH, "//span[text()='도구']")
     _click(driver, By.XPATH, "//p[text()='행동특성 및 종합의견']")
@@ -82,6 +83,7 @@ def test_behavior_create(logged_in_driver):
     # Act
     # ==========
     # 다음으로 버튼을 클릭
+    testlog.act("select_school_level_and_move_next")
     _click(driver, By.XPATH, "//button[@type='submit' and contains(., '다음으로')]")
 
     # 학생 정보 입력 화면이 나타날 때까지 대기
@@ -102,6 +104,11 @@ def test_behavior_create(logged_in_driver):
     # Assert
     # ==========
     # 학생 정보 입력 화면이 정상적으로 표시되는지 확인
+    testlog.assert_(
+        "behavior_create_step_navigation_success",
+        expected=True,
+        actual=(name_input_area.is_displayed() and school_level_area.is_displayed()),
+    )
     assert name_input_area.is_displayed(), NAME_INPUT_AREA_NOT_DISPLAYED
 
     # 이전 단계에서 선택한 학교급이 정상적으로 유지되는지 확인

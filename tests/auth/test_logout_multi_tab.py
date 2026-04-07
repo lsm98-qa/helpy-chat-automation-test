@@ -40,7 +40,7 @@ def _is_protected_page_blocked(driver, wait, base_url):
 # =========================
 # 탭 간 로그아웃 세션 무효화 검증
 # =========================
-def test_logout_invalidates_session_after_refresh_in_other_tab(logged_in_driver, wait, base_url):
+def test_logout_invalidates_session_after_refresh_in_other_tab(logged_in_driver, wait, base_url, testlog):
     # ==========
     # Arrange
     # ==========
@@ -48,6 +48,7 @@ def test_logout_invalidates_session_after_refresh_in_other_tab(logged_in_driver,
     account_menu = AccountMenu(driver, wait)
     wait.until(EC.url_contains("/ai-helpy-chat"))
     wait.until(EC.presence_of_element_located(PROFILE_AVATAR))
+    testlog.arrange("multi_tab_logout_setup", base_url=base_url)
 
     # 테스트용 두 번째 탭 생성
     first_tab = driver.current_window_handle
@@ -59,6 +60,7 @@ def test_logout_invalidates_session_after_refresh_in_other_tab(logged_in_driver,
     # Act
     # ==========
     # 두 번째 탭에서 로그인 상태를 확인한 뒤 첫 번째 탭에서 로그아웃
+    testlog.act("logout_on_first_tab_and_refresh_second_tab")
     driver.switch_to.window(second_tab)
     wait.until(EC.url_contains("/ai-helpy-chat"))
     wait.until(EC.presence_of_element_located(PROFILE_AVATAR))
@@ -76,7 +78,15 @@ def test_logout_invalidates_session_after_refresh_in_other_tab(logged_in_driver,
     # ==========
     # Assert
     # ==========
-    assert _is_logged_out_or_restricted(driver) and blocked_protected_page, (
+    is_session_invalidated = _is_logged_out_or_restricted(driver) and blocked_protected_page
+    testlog.assert_(
+        "session_invalidated_after_refresh",
+        expected=True,
+        actual=is_session_invalidated,
+        blocked_protected_page=blocked_protected_page,
+        current_url=driver.current_url,
+    )
+    assert is_session_invalidated, (
         f"다른 탭 새로고침 후 세션 무효화 검증에 실패했습니다. "
         f"current_url={driver.current_url}, "
         f"blocked_protected_page={blocked_protected_page}"

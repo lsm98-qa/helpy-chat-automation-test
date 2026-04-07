@@ -151,18 +151,20 @@ def _wait_for_new_excel_file(download_dir, before_files, timeout=60):
 # =========================
 # 행동특성 및 종합의견에서 AI 생성 결과 엑셀 파일을 다운로드할 수 있는지 검증
 # =========================
-def test_behavior_result_excel_download(logged_in_driver):
+def test_behavior_result_excel_download(logged_in_driver, testlog):
     driver = logged_in_driver
     download_dir = Path.home() / "Downloads"
 
     # ==========
     # Arrange
     # ==========
+    testlog.arrange("prepare_behavior_result_download", download_dir=str(download_dir))
     _go_to_behavior_student_info_step(driver)
 
     # ==========
     # Act
     # ==========
+    testlog.act("save_behavior_keywords_and_download_excel")
     _save_behavior_keywords(driver, "홍길동", "차분하고 침착함")
 
     download_button = _wait_for_result_download_button(driver, timeout=180)
@@ -183,6 +185,12 @@ def test_behavior_result_excel_download(logged_in_driver):
     # ==========
     # Assert
     # ==========
+    testlog.assert_(
+        "behavior_result_excel_downloaded",
+        expected=True,
+        actual=(downloaded_file.exists() and downloaded_file.stat().st_size > 0),
+        downloaded_file=str(downloaded_file),
+    )
     assert downloaded_file.exists(), "생성 결과 엑셀 파일이 다운로드되지 않았습니다."
     assert downloaded_file.stat().st_size > 0, "다운로드된 엑셀 파일이 비어 있습니다."
 

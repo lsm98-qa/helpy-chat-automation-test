@@ -99,12 +99,13 @@ def _wait_for_success_check_icon(driver, timeout=30):
 # =========================
 # 수업지도안에서 빠른 생성 선택 후 생성이 완료되는지 검증
 # =========================
-def test_lesson_plan_quick_create(logged_in_driver):
+def test_lesson_plan_quick_create(logged_in_driver, testlog):
     driver = logged_in_driver
 
     # ==========
     # Arrange
     # ==========
+    testlog.arrange("open_lesson_plan_tool", mode="quick")
     # 도구 메뉴에서 수업지도안 페이지로 진입
     _click(driver, By.XPATH, "//span[text()='도구']")
     _click(driver, By.XPATH, "//p[text()='수업지도안']")
@@ -138,6 +139,7 @@ def test_lesson_plan_quick_create(logged_in_driver):
     # ==========
     # Act
     # ==========
+    testlog.act("generate_quick_lesson_plan")
     button_locator = (
         By.XPATH,
         "//button[normalize-space()='수업지도안 생성' or normalize-space()='다시 생성']",
@@ -184,6 +186,11 @@ def test_lesson_plan_quick_create(logged_in_driver):
     # 완료 체크 아이콘이 표시되는지 확인
     success_icon = _wait_for_success_check_icon(driver, timeout=30)
 
+    testlog.assert_(
+        "quick_lesson_plan_generation_completed",
+        expected=True,
+        actual=success_icon.is_displayed(),
+    )
     assert success_icon.is_displayed(), "수업지도안 생성 완료 체크 아이콘이 표시되지 않았습니다."
 
     print("수업지도안이 생성 완료 하였습니다.")

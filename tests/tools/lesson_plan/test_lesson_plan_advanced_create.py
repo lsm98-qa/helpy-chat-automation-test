@@ -92,12 +92,13 @@ def _wait_until_generate_button_enabled(driver, timeout=180):
 # =========================
 # 수업지도안에서 정교한 생성 선택 후 생성 버튼이 다시 활성화되는지 검증
 # =========================
-def test_lesson_plan_detail_create(logged_in_driver):
+def test_lesson_plan_detail_create(logged_in_driver, testlog):
     driver = logged_in_driver
 
     # ==========
     # Arrange
     # ==========
+    testlog.arrange("open_lesson_plan_tool", mode="advanced")
     # 도구 메뉴에서 수업지도안 페이지로 진입
     _click(driver, By.XPATH, "//span[text()='도구']")
     _click(driver, By.XPATH, "//p[text()='수업지도안']")
@@ -132,6 +133,7 @@ def test_lesson_plan_detail_create(logged_in_driver):
     # Act
     # ==========
     # 수업지도안 생성 버튼 또는 다시 생성 버튼까지 스크롤 후 클릭
+    testlog.act("generate_advanced_lesson_plan")
     button_locator = (
         By.XPATH,
         "//button[normalize-space()='수업지도안 생성' or normalize-space()='다시 생성']",
@@ -173,6 +175,11 @@ def test_lesson_plan_detail_create(logged_in_driver):
     # 생성 완료 후 버튼이 다시 활성화되는지 확인
     re_enabled_button = _wait_until_generate_button_enabled(driver, timeout=180)
 
+    testlog.assert_(
+        "advanced_lesson_plan_generation_completed",
+        expected=True,
+        actual=re_enabled_button.is_enabled(),
+    )
     assert re_enabled_button.is_enabled(), "정교한 생성 완료 후 버튼이 다시 활성화되지 않았습니다."
 
     print("수업지도안 정교한 생성 완료!")

@@ -65,12 +65,13 @@ def _reset_input_history_if_exists(driver):
 # =========================
 # 세부 특기사항 생성 후 학생 이름 입력 화면으로 정상 진입하는지 검증
 # =========================
-def test_spec_create(logged_in_driver):
+def test_spec_create(logged_in_driver, testlog):
     driver = logged_in_driver
 
     # ==========
     # Arrange
     # ==========
+    testlog.arrange("open_spec_detail_tool", school_level="중학교", grade="3학년", subject="국어")
     # 도구 메뉴에서 세부 특기사항 페이지로 진입
     _click(driver, By.XPATH, "//span[text()='도구']")
     _click(driver, By.XPATH, "//p[text()='세부 특기사항']")
@@ -107,6 +108,7 @@ def test_spec_create(logged_in_driver):
     # Act
     # ==========
     # 다음으로 버튼을 클릭
+    testlog.act("submit_spec_detail_form")
     _click(
         driver,
         By.XPATH,
@@ -124,6 +126,11 @@ def test_spec_create(logged_in_driver):
     # Assert
     # ==========
     # 학생 이름 입력 화면이 정상적으로 표시되는지 확인
+    testlog.assert_(
+        "spec_detail_student_info_step_visible",
+        expected=True,
+        actual=name_input_area.is_displayed(),
+    )
     assert name_input_area.is_displayed(), NAME_INPUT_AREA_NOT_DISPLAYED
 
     # 이전 단계에서 입력한 값이 정상적으로 유지되는지 확인

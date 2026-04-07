@@ -34,21 +34,24 @@ def _get_current_result_text(driver):
 # =========================
 # 심층 조사에서 최종 결과가 새로 생성되는지 검증
 # =========================
-def test_deep_research_create(logged_in_driver):
+def test_deep_research_create(logged_in_driver, testlog):
     driver = logged_in_driver
 
     # ==========
     # Arrange
     # ==========
+    testlog.arrange("open_deep_research_tool_and_fill_form")
     _go_to_deep_research_page(driver)
     _fill_deep_research_form(driver, TOPIC_INPUT, INSTRUCTIONS_INPUT)
 
     # 생성 전 기존 결과 텍스트 저장
     previous_result_text = _get_current_result_text(driver)
+    testlog.arrange("capture_previous_result_text", previous_result_len=len(previous_result_text.strip()))
 
     # ==========
     # Act
     # ==========
+    testlog.act("submit_deep_research_generation")
     submit_button = WebDriverWait(driver, 30).until(
         EC.presence_of_element_located((
             By.XPATH,
@@ -102,6 +105,18 @@ def test_deep_research_create(logged_in_driver):
     # Assert
     # ==========
     result_text = _find_result_content(driver, timeout=600)
+    is_valid_result = (
+        bool(result_text.strip())
+        and len(result_text.strip()) >= 50
+        and ("오류" not in result_text and "에러" not in result_text)
+        and (result_text.strip() != previous_result_text)
+    )
+    testlog.assert_(
+        "deep_research_result_generated",
+        expected=True,
+        actual=is_valid_result,
+        result_len=len(result_text.strip()),
+    )
 
     assert result_text.strip(), RESEARCH_RESULT_NOT_CREATED
     assert len(result_text.strip()) >= 50, RESEARCH_RESULT_TOO_SHORT

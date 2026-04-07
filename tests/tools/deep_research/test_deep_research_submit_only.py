@@ -16,18 +16,20 @@ from tests.tools.deep_research.input_values import (
 # =========================
 # 심층 조사에서 제출 시 생성 요청이 정상 시작되는지 검증
 # =========================
-def test_deep_research_submit_only(logged_in_driver):
+def test_deep_research_submit_only(logged_in_driver, testlog):
     driver = logged_in_driver
 
     # ==========
     # Arrange
     # ==========
+    testlog.arrange("open_deep_research_tool_and_fill_form")
     _go_to_deep_research_page(driver)
     _fill_deep_research_form(driver, TOPIC_INPUT, INSTRUCTIONS_INPUT)
 
     # ==========
     # Act
     # ==========
+    testlog.act("submit_deep_research_request")
     submit_button = WebDriverWait(driver, 30).until(
         EC.presence_of_element_located((
             By.XPATH,
@@ -79,4 +81,9 @@ def test_deep_research_submit_only(logged_in_driver):
         ))
     )
 
+    testlog.assert_(
+        "deep_research_processing_state_visible",
+        expected=True,
+        actual=processing_state.is_displayed(),
+    )
     assert processing_state.is_displayed(), "심층 조사 제출 실패: 생성 요청 후 진행 상태 UI가 표시되지 않았습니다."

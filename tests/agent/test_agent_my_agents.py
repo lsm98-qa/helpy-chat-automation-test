@@ -1,11 +1,11 @@
 import pytest
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import StaleElementReferenceException, TimeoutException
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from locators.menu_locators import *
 from locators.agent_locators import *
 
-AGENT_LIST_CONTAINER = (By.XPATH, "//div[@data-testid='virtuoso-item-list']")
+AGENT_LIST_CONTAINER = (By.XPATH, "//*[@data-testid='virtuoso-item-list']")
 AGENT_ITEMS_XPATH = "//div[@data-testid='virtuoso-item-list']/div[@data-item-index or @data-index]"
 AGENT_CARD_LINK_SELECTOR = "a[href*='/ai-helpy-chat/agents/']"
 DELETE_CONFIRM_DIALOG = (By.CSS_SELECTOR, "div[role='dialog']")
@@ -22,12 +22,22 @@ def _go_to_my_agents(wait):
 
 # 내 에이전트 카드 리스트가 로드될 때까지 기다린 뒤 카드 목록을 반환한다.
 def _get_agent_items(driver, wait):
-    wait.until(EC.visibility_of_any_elements_located(AGENT_LIST_CONTAINER))
-    try:
-        wait.until(lambda d: len(d.find_elements(By.XPATH, AGENT_ITEMS_XPATH)) > 0)
-    except TimeoutException:
-        return []
-    return driver.find_elements(By.XPATH, AGENT_ITEMS_XPATH)
+    last_error = None
+    for _ in range(5):
+        try:
+            wait.until(EC.presence_of_element_located(AGENT_LIST_CONTAINER))
+            try:
+                wait.until(lambda d: len(d.find_elements(By.XPATH, AGENT_ITEMS_XPATH)) > 0)
+            except TimeoutException:
+                return []
+            return driver.find_elements(By.XPATH, AGENT_ITEMS_XPATH)
+        except StaleElementReferenceException as e:
+            last_error = e
+            continue
+
+    if last_error:
+        raise last_error
+    return []
 
 
 # 에이전트 상세 링크 href에서 에이전트 ID를 추출한다.
@@ -69,15 +79,17 @@ def _click_delete_confirm(wait):
 # =========================
 # 내 에이전트 페이지 진입 테스트
 # =========================
-def test_navigate_to_my_agents(navigate_to_agent_explore, wait): 
+def test_navigate_to_my_agents(navigate_to_agent_explore, wait, testlog): 
     # ==========
     # Arrange
     # ==========
     _ = navigate_to_agent_explore
+    testlog.arrange("navigate_to_agent_explore_for_my_agents")
     
     # ==========
     # Act
     # ==========
+    testlog.act("go_to_my_agents_page")
     _go_to_my_agents(wait)
     
     # ==========
@@ -85,22 +97,25 @@ def test_navigate_to_my_agents(navigate_to_agent_explore, wait):
     # ==========
     wait.until(EC.text_to_be_present_in_element(MY_AGENTS_TITLE, "내 에이전트"))
     my_agents_title = wait.until(EC.visibility_of_element_located(MY_AGENTS_TITLE))
+    testlog.assert_("my_agents_title_visible", expected="내 에이전트", actual=my_agents_title.text.strip())
     assert my_agents_title.text.strip() == "내 에이전트"
 
 # =========================
 # 에이전트 탐색 -> 내 에이전트 페이지에서 뒤로가기 버튼 테스트
 # =========================
-def test_navigate_back_to_agent_explore(navigate_to_agent_explore, wait):
+def test_navigate_back_to_agent_explore(navigate_to_agent_explore, wait, testlog):
     # ==========
     # Arrange
     # ==========
     _ = navigate_to_agent_explore
+    testlog.arrange("on_my_agents_page_for_back_navigation")
     _go_to_my_agents(wait)
     
     # ==========
     # Act
     # ==========
     # 뒤로가기 버튼으로 에이전트 탐색 페이지 복귀 동작 수행
+    testlog.act("click_back_button_to_agent_explore")
     wait.until(EC.element_to_be_clickable(AGENT_BACK_BUTTON)).click()
     wait.until(EC.url_contains("/ai-helpy-chat/agents"))
     
@@ -109,22 +124,25 @@ def test_navigate_back_to_agent_explore(navigate_to_agent_explore, wait):
     # ==========
     wait.until(EC.text_to_be_present_in_element(AGENT_EXPLORE_TITLE, "에이전트 탐색"))
     agent_title = wait.until(EC.visibility_of_element_located(AGENT_EXPLORE_TITLE))
+    testlog.assert_("agent_explore_title_visible", expected="에이전트 탐색", actual=agent_title.text.strip())
     assert agent_title.text.strip() == "에이전트 탐색"
 
 # =========================
 # 내 에이전트 페이지의 각 에이전트 카드의 수정 버튼이 표시되는지 테스트
 # =========================
-def test_each_agent_card_shows_edit_button(navigate_to_agent_explore, wait):
+def test_each_agent_card_shows_edit_button(navigate_to_agent_explore, wait, testlog):
     # ==========
     # Arrange
     # ==========
     driver = navigate_to_agent_explore
+    testlog.arrange("prepare_edit_button_visibility_check")
     _go_to_my_agents(wait)
 
     # ==========
     # Act
     # ==========
     # 내 에이전트 목록에서 카드 리스트 조회
+    testlog.act("load_my_agents_list")
     agent_items = _get_agent_items(driver, wait)
 
     # ==========
@@ -132,6 +150,7 @@ def test_each_agent_card_shows_edit_button(navigate_to_agent_explore, wait):
     # ==========
     if not agent_items:
         pytest.skip("수정 버튼 노출 여부를 검증할 에이전트 카드가 없습니다.")
+    testlog.assert_("my_agents_list_loaded_for_edit_button_check", expected=True, actual=(len(agent_items) > 0), item_count=len(agent_items))
 
     for idx, item in enumerate(agent_items, start=1):
         # 각 카드에서 수정 아이콘 버튼 존재 여부 확인
@@ -144,17 +163,19 @@ def test_each_agent_card_shows_edit_button(navigate_to_agent_explore, wait):
 # =========================
 # 내 에이전트 페이지의 각 에이전트 카드의 삭제 버튼이 표시되는지 테스트
 # =========================
-def test_each_agent_card_shows_delete_button(navigate_to_agent_explore, wait):
+def test_each_agent_card_shows_delete_button(navigate_to_agent_explore, wait, testlog):
     # ==========
     # Arrange
     # ==========
     driver = navigate_to_agent_explore
+    testlog.arrange("prepare_delete_button_visibility_check")
     _go_to_my_agents(wait)
 
     # ==========
     # Act
     # ==========
     # 내 에이전트 목록에서 카드 리스트 조회
+    testlog.act("load_my_agents_list")
     agent_items = _get_agent_items(driver, wait)
 
     # ==========
@@ -162,6 +183,7 @@ def test_each_agent_card_shows_delete_button(navigate_to_agent_explore, wait):
     # ==========
     if not agent_items:
         pytest.skip("삭제 버튼 노출 여부를 검증할 에이전트 카드가 없습니다.")
+    testlog.assert_("my_agents_list_loaded_for_delete_button_check", expected=True, actual=(len(agent_items) > 0), item_count=len(agent_items))
 
     for idx, item in enumerate(agent_items, start=1):
         # 각 카드에서 삭제 아이콘 버튼 존재 여부 확인
@@ -175,11 +197,12 @@ def test_each_agent_card_shows_delete_button(navigate_to_agent_explore, wait):
 # =========================
 # 수정 버튼 클릭 시 해당 에이전트의 수정 페이지로 이동하는지 테스트
 # =========================
-def test_click_edit_button_navigates_to_edit_page(navigate_to_agent_explore, wait):
+def test_click_edit_button_navigates_to_edit_page(navigate_to_agent_explore, wait, testlog):
     # ==========
     # Arrange
     # ==========
     driver = navigate_to_agent_explore
+    testlog.arrange("prepare_edit_button_navigation_check")
     _go_to_my_agents(wait)
     agent_items = _get_agent_items(driver, wait)
 
@@ -216,6 +239,7 @@ def test_click_edit_button_navigates_to_edit_page(navigate_to_agent_explore, wai
     # Act
     # ==========
     # 대상 카드의 수정 버튼 클릭
+    testlog.act("click_first_valid_edit_button")
     edit_button = target_item.find_element(
         By.CSS_SELECTOR,
         "button:has(svg[data-icon='pen'])",
@@ -228,17 +252,19 @@ def test_click_edit_button_navigates_to_edit_page(navigate_to_agent_explore, wai
     # ==========
     expected_path = f"/ai-helpy-chat/agents/{target_agent_id}/builder"
     wait.until(EC.url_contains(expected_path))
+    testlog.assert_("edit_button_navigates_to_builder", expected=True, actual=(expected_path in driver.current_url), expected_path=expected_path)
     assert expected_path in driver.current_url, "수정 페이지 URL이 선택한 에이전트와 일치하지 않습니다."
 
 
 # =========================
 # 삭제 버튼 클릭 시 확인 모달이 정상적으로 시작되는지 테스트
 # =========================
-def test_click_delete_button_opens_delete_confirmation_modal (navigate_to_agent_explore, wait):
+def test_click_delete_button_opens_delete_confirmation_modal (navigate_to_agent_explore, wait, testlog):
     # ==========
     # Arrange
     # ==========
     driver = navigate_to_agent_explore
+    testlog.arrange("prepare_delete_confirmation_modal_check")
     _go_to_my_agents(wait)
     agent_items = _get_agent_items(driver, wait)
 
@@ -254,12 +280,20 @@ def test_click_delete_button_opens_delete_confirmation_modal (navigate_to_agent_
     # Act
     # ==========
     # 삭제 버튼 클릭으로 확인 모달 오픈
+    testlog.act("click_delete_button_on_card")
     wait.until(EC.element_to_be_clickable(target_delete_button)).click()
 
     # ==========
     # Assert
     # ==========
     dialog = wait.until(EC.visibility_of_element_located(DELETE_CONFIRM_DIALOG))
+    is_modal_valid = (
+        dialog.is_displayed()
+        and "에이전트 삭제" in dialog.text
+        and "취소" in dialog.text
+        and "삭제" in dialog.text
+    )
+    testlog.assert_("delete_confirmation_modal_visible", expected=True, actual=is_modal_valid)
     assert dialog.is_displayed(), "삭제 확인 모달이 표시되지 않습니다."
     assert "에이전트 삭제" in dialog.text, "삭제 확인 모달 제목이 올바르지 않습니다."
     assert "취소" in dialog.text and "삭제" in dialog.text, "삭제 확인 모달 버튼이 표시되지 않습니다."
@@ -268,11 +302,12 @@ def test_click_delete_button_opens_delete_confirmation_modal (navigate_to_agent_
 # =========================
 # 삭제 수행 후 해당 에이전트가 목록에서 사라지는지 테스트
 # =========================
-def test_deleted_agent_is_removed_from_list(navigate_to_agent_explore, wait):
+def test_deleted_agent_is_removed_from_list(navigate_to_agent_explore, wait, testlog):
     # ==========
     # Arrange
     # ==========
     driver = navigate_to_agent_explore
+    testlog.arrange("prepare_delete_agent_and_check_removed")
     _go_to_my_agents(wait)
     agent_items = _get_agent_items(driver, wait)
 
@@ -302,6 +337,7 @@ def test_deleted_agent_is_removed_from_list(navigate_to_agent_explore, wait):
     # Act
     # ==========
     # 삭제 버튼 클릭 후 확인 모달에서 삭제 확정
+    testlog.act("delete_target_agent")
     wait.until(EC.element_to_be_clickable(target_delete_button)).click()
     _click_delete_confirm(wait)
 
@@ -313,6 +349,12 @@ def test_deleted_agent_is_removed_from_list(navigate_to_agent_explore, wait):
         lambda d: len(d.find_elements(By.CSS_SELECTOR, target_agent_link_selector)) == 0
     )
     remaining_links = driver.find_elements(By.CSS_SELECTOR, target_agent_link_selector)
+    testlog.assert_(
+        "deleted_agent_removed_from_list",
+        expected=0,
+        actual=len(remaining_links),
+        target_agent_id=target_agent_id,
+    )
     assert len(remaining_links) == 0, (
         f"삭제 후에도 대상 에이전트({target_agent_id})가 목록에 남아 있습니다."
     )
@@ -321,11 +363,12 @@ def test_deleted_agent_is_removed_from_list(navigate_to_agent_explore, wait):
 # =========================
 # 삭제 수행 후 성공 토스트가 표시되는지 테스트
 # =========================
-def test_delete_agent_shows_success_toast(navigate_to_agent_explore, wait):
+def test_delete_agent_shows_success_toast(navigate_to_agent_explore, wait, testlog):
     # ==========
     # Arrange
     # ==========
     driver = navigate_to_agent_explore
+    testlog.arrange("prepare_delete_agent_success_toast_check")
     _go_to_my_agents(wait)
     agent_items = _get_agent_items(driver, wait)
 
@@ -341,6 +384,7 @@ def test_delete_agent_shows_success_toast(navigate_to_agent_explore, wait):
     # Act
     # ==========
     # 삭제 버튼 클릭 후 확인 모달에서 삭제 확정
+    testlog.act("delete_agent_and_wait_success_toast")
     wait.until(EC.element_to_be_clickable(target_delete_button)).click()
     _click_delete_confirm(wait)
 
@@ -352,6 +396,8 @@ def test_delete_agent_shows_success_toast(navigate_to_agent_explore, wait):
             (By.CSS_SELECTOR, "div[role='alert'] #notistack-snackbar")
         )
     )
+    toast_ok = toast_message.is_displayed() and ("에이전트가 삭제되었습니다." in toast_message.text)
+    testlog.assert_("delete_agent_success_toast_visible", expected=True, actual=toast_ok)
     assert toast_message.is_displayed(), "삭제 성공 토스트가 표시되지 않습니다."
     assert "에이전트가 삭제되었습니다." in toast_message.text, "삭제 성공 토스트 문구가 올바르지 않습니다."
 
