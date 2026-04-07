@@ -40,6 +40,7 @@ pytest
 
 - `--html=artifacts/reports/report.html --self-contained-html`
 - `-ra -rxX` (skip/xfail/xpass 요약 + xfail reason 출력)
+- 실시간 콘솔 로그 + 파일 로그 (`artifacts/logs/pytest.log`)
 
 ## 6) 자주 쓰는 실행 옵션
 
@@ -47,6 +48,12 @@ pytest
 
 ```bash
 pytest --base-url "https://qaproject.elice.io/ai-helpy-chat"
+```
+
+헤드리스 실행:
+
+```bash
+pytest --headless
 ```
 
 특정 영역만 실행:
@@ -58,8 +65,18 @@ pytest tests/agent
 pytest tests/tools
 ```
 
+특정 파일만 실행:
+
+```bash
+pytest tests/chat/test_search_chat.py
+```
+
 ## 7) 산출물 경로
 
 - HTML 리포트: `artifacts/reports/report.html`
 - 테스트 로그: `artifacts/logs/pytest.log`
 - 실패 스크린샷: `artifacts/screenshots/`
+
+## 8) 실행 팁
+
+- 채팅/에이전트 시나리오는 데이터 상태 영향이 있어, 테스트 계정의 잔여 데이터 유무를 확인하고 실행하는 것이 안정적입니다.
