@@ -10,8 +10,8 @@ import pytest
 from pptx import Presentation
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
 
 from locators.menu_locators import MENU_TOOLS
 
@@ -19,6 +19,23 @@ NS = {
     "p": "http://schemas.openxmlformats.org/presentationml/2006/main",
 }
 logger = logging.getLogger(__name__)
+
+PPT_CREATE_MENU = (By.XPATH, "//p[text()='PPT 생성']")
+TOPIC_INPUT = (By.NAME, "topic")
+INSTRUCTIONS_INPUT = (By.NAME, "instructions")
+SLIDES_COUNT_INPUT = (By.NAME, "slides_count")
+SECTION_COUNT_INPUT = (By.NAME, "section_count")
+SIMPLE_MODE_CHECKBOX = (By.NAME, "simple_mode")
+SUBMIT_BUTTON = (By.CSS_SELECTOR, "button[type='submit']")
+REGENERATE_MODAL = (By.XPATH, "//div[@role='presentation']")
+REGENERATE_CONFIRM_BUTTON = (By.XPATH, ".//button[contains(.,'다시 생성')]")
+DOWNLOAD_LINK = (By.XPATH, "//a[contains(., '생성 결과 다운로드')]")
+
+PPT_TOPIC = "이미지 AI의 최신 트렌드와 활용"
+PPT_INSTRUCTIONS = "2025년 기준으로 만들어줘"
+EXPECTED_SLIDE_COUNT = 10
+EXPECTED_SECTION_COUNT = 3
+DOWNLOAD_DIR = Path("tests/tools/ppt_create/downloads")
 
 
 # 요소가 화면에 표시될 때까지 기다린 뒤 반환하는 헬퍼
@@ -44,6 +61,24 @@ def _type_text(driver, by, value, text):
     element.send_keys(text)
 
 
+# 제출 버튼 상태에 따라 생성 또는 다시 생성 플로우를 수행하는 헬퍼
+def _submit_ppt_generation(wait, testlog):
+    submit_button = wait.until(
+        EC.element_to_be_clickable(SUBMIT_BUTTON)
+    )
+    submit_button_text = submit_button.text.strip()
+    testlog.act("submit_generation_clicked", button_text=submit_button_text)
+
+    if submit_button_text == "다시 생성":
+        submit_button.click()
+        modal = wait.until(
+            EC.presence_of_element_located(REGENERATE_MODAL)
+        )
+        modal.find_element(*REGENERATE_CONFIRM_BUTTON).click()
+    else:
+        submit_button.click()
+
+
 # 생성 결과 다운로드 링크가 제한 시간 내 .pptx로 준비되는지 확인하는 헬퍼
 def _wait_for_ppt_link(driver, timeout_seconds=600, poll_interval=10):
     for attempt in range(timeout_seconds // poll_interval):
@@ -51,9 +86,7 @@ def _wait_for_ppt_link(driver, timeout_seconds=600, poll_interval=10):
         elapsed_sec = (attempt + 1) * poll_interval
 
         try:
-            download_link = driver.find_element(
-                By.XPATH, "//a[contains(., '생성 결과 다운받기')]"
-            )
+            download_link = driver.find_element(*DOWNLOAD_LINK)
             href = download_link.get_attribute("href")
             logger.info("ppt_link_poll elapsed_sec=%s href=%s", elapsed_sec, href)
 
@@ -99,7 +132,7 @@ def _download_with_retry(href, download_dir, retries=5, delay_seconds=3):
     )
 
 
-# 다운로드된 PPT의 슬라이드 수와 섹션 수를 검증하는 헬퍼
+# 다운로드된 PPT의 슬라이드 수 및 섹션 수를 검증하는 헬퍼
 def _verify_slide_count(ppt_file_path, expected_slide_count, expected_section_count):
     logger.info(
         "verify_slide_count_start file=%s expected_slides=%s expected_sections=%s",
@@ -135,7 +168,7 @@ def _verify_slide_count(ppt_file_path, expected_slide_count, expected_section_co
             actual_slide_count,
         )
         errors.append(
-            f"슬라이드 수 불일치: expected={expected_slide_count}, actual={actual_slide_count}"
+            f"슬라이드 수 불일치 expected={expected_slide_count}, actual={actual_slide_count}"
         )
 
     if actual_section_count != expected_section_count:
@@ -145,7 +178,7 @@ def _verify_slide_count(ppt_file_path, expected_slide_count, expected_section_co
             actual_section_count,
         )
         errors.append(
-            f"섹션 수 불일치: expected={expected_section_count}, actual={actual_section_count}"
+            f"섹션 수 불일치 expected={expected_section_count}, actual={actual_section_count}"
         )
 
     if errors:
@@ -156,57 +189,40 @@ def _verify_slide_count(ppt_file_path, expected_slide_count, expected_section_co
 
 
 # =========================
-# PPT 생성 후 다운로드 파일의 슬라이드 수와 섹션 수가 요청값과 일치하는지 검증
+# PPT 생성 및 다운로드 파일의 슬라이드 수와 섹션 수가 요청값과 일치하는지 검증
 # =========================
 @pytest.mark.xfail(reason="PPT 생성 도구의 불안정성으로 인해 현재 PPT 슬라이드 수 불일치 버그 존재")
 def test_ppt_create(logged_in_driver, wait, testlog):
     driver = logged_in_driver
-    expected_slide_count = 10
-    expected_section_count = 3
 
     # ==========
     # Arrange
     # ==========
     # 도구 메뉴에서 PPT 생성 페이지로 진입
     _click(driver, *MENU_TOOLS)
-    _click(driver, By.XPATH, "//p[text()='PPT 생성']")
+    _click(driver, *PPT_CREATE_MENU)
     testlog.arrange("tool_page_opened")
 
     # 생성 조건 입력
-    _type_text(driver, By.NAME, "topic", "이미지 AI의 최신 트렌드와 전망")
-    _type_text(driver, By.NAME, "instructions", "2025년 기준으로 만들어줘")
-    _type_text(driver, By.NAME, "slides_count", str(expected_slide_count))
-    _type_text(driver, By.NAME, "section_count", str(expected_section_count))
+    _type_text(driver, *TOPIC_INPUT, PPT_TOPIC)
+    _type_text(driver, *INSTRUCTIONS_INPUT, PPT_INSTRUCTIONS)
+    _type_text(driver, *SLIDES_COUNT_INPUT, str(EXPECTED_SLIDE_COUNT))
+    _type_text(driver, *SECTION_COUNT_INPUT, str(EXPECTED_SECTION_COUNT))
     testlog.arrange(
         "ppt_form_filled",
-        expected_slide_count=expected_slide_count,
-        expected_section_count=expected_section_count,
+        expected_slide_count=EXPECTED_SLIDE_COUNT,
+        expected_section_count=EXPECTED_SECTION_COUNT,
     )
 
-    # 심층조사 모드가 선택되어 있으면 해제
-    simple_mode_checkbox = driver.find_element(By.NAME, "simple_mode")
+    # 심플조사 모드가 선택되어 있으면 해제
+    simple_mode_checkbox = driver.find_element(*SIMPLE_MODE_CHECKBOX)
     if simple_mode_checkbox and simple_mode_checkbox.is_selected():
         simple_mode_checkbox.click()
 
     # ==========
     # Act
     # ==========
-    # 제출 버튼 상태에 따라 생성 또는 다시 생성을 수행
-    submit_button = wait.until(
-        EC.element_to_be_clickable((By.CSS_SELECTOR, "button[type='submit']"))
-    )
-    submit_button_text = submit_button.text.strip()
-    testlog.act("submit_generation_clicked", button_text=submit_button_text)
-
-    if submit_button_text == "다시 생성":
-        submit_button.click()
-        modal = wait.until(
-            EC.presence_of_element_located((By.XPATH, "//div[@role='presentation']"))
-        )
-        modal.find_element(By.XPATH, ".//button[contains(.,'다시 생성')]").click()
-    else:
-        submit_button.click()
-
+    _submit_ppt_generation(wait, testlog)
     print("PPT 생성 시작")
 
     # ==========
@@ -224,25 +240,25 @@ def test_ppt_create(logged_in_driver, wait, testlog):
     # 결과 파일이 정상적으로 다운로드되는지 확인
     downloaded_ppt = _download_with_retry(
         ppt_link,
-        Path("tests/tools/ppt_create/downloads"),
+        DOWNLOAD_DIR,
     )
 
-    # 다운로드된 PPT의 슬라이드 수와 섹션 수가 요청값과 일치하는지 확인
+    # 다운로드된 PPT의 슬라이드 수 및 섹션 수가 요청값과 일치하는지 확인
     actual_slide_count, actual_section_count = _verify_slide_count(
         downloaded_ppt,
-        expected_slide_count,
-        expected_section_count,
+        EXPECTED_SLIDE_COUNT,
+        EXPECTED_SECTION_COUNT,
     )
     testlog.assert_(
         "ppt_file_verified",
         expected=True,
         actual=(
-            actual_slide_count == expected_slide_count
-            and actual_section_count == expected_section_count
+            actual_slide_count == EXPECTED_SLIDE_COUNT
+            and actual_section_count == EXPECTED_SECTION_COUNT
         ),
         downloaded_ppt=str(downloaded_ppt),
-        expected_slide_count=expected_slide_count,
+        expected_slide_count=EXPECTED_SLIDE_COUNT,
         actual_slide_count=actual_slide_count,
-        expected_section_count=expected_section_count,
+        expected_section_count=EXPECTED_SECTION_COUNT,
         actual_section_count=actual_section_count,
     )
